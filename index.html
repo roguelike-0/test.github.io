@@ -1,90 +1,81 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Progate</title>
-  <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
-  <link rel="stylesheet" type="text/css" href="stylesheet.css">
+  <meta charset="UTF-8">
+  <title>装備ジェネレータ</title>
+  <style>
+    body { font-family: sans-serif; background: #111; color: #eee; padding: 20px; }
+    .legendary { color: gold; font-weight: bold; }
+    .epic { color: violet; }
+    .rare { color: deepskyblue; }
+    .normal { color: white; }
+    pre { background: #222; padding: 10px; border-radius: 8px; white-space: pre-wrap; }
+  </style>
 </head>
 <body>
-  <header>
-    <div class="container">
-      <div class="header-left">
-        <img class="logo" src="https://prog-8.com/images/html/advanced/main_logo.png">
-      </div>
-      <span class="fa fa-bars menu-icon"></span>
-      <div class="header-right">
-        <a href="#">レッスン</a>
-        <a href="#">新規登録</a>
-        <a href="#" class="login">ログイン</a>
-      </div>
-    </div>
-  </header>
-  <div class="top-wrapper">
-    <div class="container">
-      <h1>Yumechi<br>Daisuki.Web</h1>
-      <p>このサイトはゆめちのファンクラブサイトです。</p>
-      <div class="btn-wrapper">
-        <a href="#" class="btn signup">新規登録はこちら</a>
-        <p>or</p>
-        <a href="#" class="btn facebook"><span class="fa fa-facebook"></span>Facebookで登録</a>
-        <a href="#" class="btn twitter"><span class="fa fa-twitter"></span>Twitterで登録</a>
-      </div>
-    </div>
-  </div>
-  <div class="lesson-wrapper">
-    <div class="container">
-      <div class="heading">
-        <h2>Learn Where to Get Started!</h2>
-      </div>
-      <div class="lessons">
-        <div class="lesson">
-          <div class="lesson-icon">
-            <img src="https://prog-8.com/images/html/advanced/html.png">
-            <p>HTML & CSS</p>
-          </div>
-          <p class="text-contents">ウェブページの作成に使用される言語です。HTMLとCSSを組み合わせることで、静的なページを作り上げることができます。</p>
-        </div>
-        <div class="lesson">
-          <div class="lesson-icon">
-            <img src="https://prog-8.com/images/html/advanced/jQuery.png">
-            <p>jQuery</p>
-          </div>
-          <p class="text-contents">素敵な動きを手軽に実装できるJavaScriptライブラリです。 アニメーション効果をつけたり、Ajax（エイジャックス）を使って外部ファイルを読み込んだりと色々なことができます。</p>
-        </div>
-        <div class="lesson">
-          <div class="lesson-icon">
-            <img src="https://prog-8.com/images/html/advanced/ruby.png">
-            <p>Ruby</p>
-          </div>
-          <p class="text-contents">オープンソースの動的なプログラミング言語で、 シンプルさと高い生産性を備えています。大きなWebアプリケーションから小さな日用ツールまで、さまざまなソフトウェアを作ることができます。</p>
-        </div>
-        <div class="lesson">
-          <div class="lesson-icon">
-            <img src="https://prog-8.com/images/html/advanced/php.png">
-            <p>PHP</p>
-          </div>
-          <p class="text-contents">HTMLだけではページの内容を変えることはできません。PHPはHTMLにプログラムを埋め込み、それを可能にします。</p>
-        </div>
-      </div>
-      <div class="clear"></div>
-    </div>
-  </div>
-  <div class="message-wrapper">
-    <div class="container">
-      <div class="heading">
-        <h2>さぁ、あなたもProgateでプログラミングを学んでみませんか?</h2>
-        <h3>Let's learn to code, learn to be creative!</h3>
-      </div>
-      <span class="btn message">さっそく開発する</span>
-    </div>
-  </div>
-  <footer>
-    <div class="container">
-      <img src="https://prog-8.com/images/html/advanced/footer_logo.png">
-      <p>Learn to Code, Learn to be Creative.</p>
-    </div>
-  </footer>
+  <h1>装備ジェネレータ</h1>
+  <button onclick="generate()">装備を生成</button>
+  <pre id="output"></pre>
+
+  <script>
+    function random(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    const equipmentList = [
+      { name: "鉄の剣", attackRange: [5, 10] },
+      { name: "鋼鉄の剣", attackRange: [7, 12] }
+    ];
+
+    const rarities = ["Normal", "Rare", "Epic", "Legendary"];
+    const rarityToOPCount = {
+      Normal: [1, 3],
+      Rare: [1, 5],
+      Epic: [1, 7],
+      Legendary: [1, 10]
+    };
+
+    const optionPool = {
+      "Lifesteal": {
+        Normal: [3, 5],
+        Rare: [6, 9],
+        Epic: [10, 12],
+        Legendary: [13, 15]
+      },
+      "CritRate": {
+        Normal: [2, 4],
+        Rare: [5, 7],
+        Epic: [8, 10],
+        Legendary: [11, 15]
+      }
+    };
+
+    function generate() {
+      const rarity = rarities[random(0, 3)];
+      const equipment = equipmentList[random(0, equipmentList.length - 1)];
+      const attack = random(equipment.attackRange[0], equipment.attackRange[1]);
+
+      const [minSlot, maxSlot] = rarityToOPCount[rarity];
+      const slotCount = random(minSlot, maxSlot);
+      const actualOPCount = random(0, slotCount);
+
+      let result = `<span class="${rarity.toLowerCase()}">[${rarity}]</span> ${equipment.name}\n`;
+      result += `Attack: ${attack}\nOptions (${slotCount}):\n`;
+
+      const keys = Object.keys(optionPool);
+      for (let i = 0; i < slotCount; i++) {
+        if (i < actualOPCount) {
+          const optName = keys[random(0, keys.length - 1)];
+          const range = optionPool[optName][rarity];
+          const val = random(range[0], range[1]);
+          result += ` - ${optName}: ${val}%\n`;
+        } else {
+          result += ` - Open Slot\n`;
+        }
+      }
+
+      document.getElementById("output").innerHTML = result;
+    }
+  </script>
 </body>
 </html>
