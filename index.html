@@ -2,80 +2,235 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>装備ジェネレータ</title>
+  <title>武器ドロップ対応マップ</title>
   <style>
-    body { font-family: sans-serif; background: #111; color: #eee; padding: 20px; }
-    .legendary { color: gold; font-weight: bold; }
-    .epic { color: violet; }
-    .rare { color: deepskyblue; }
-    .normal { color: white; }
-    pre { background: #222; padding: 10px; border-radius: 8px; white-space: pre-wrap; }
+    body { background: #111; color: #eee; font-family: monospace; text-align: center; }
+    pre { background: #222; padding: 10px; display: inline-block; line-height: 1.2em; font-size: 16px; }
+    button { margin: 4px; padding: 8px 12px; font-size: 16px; }
+    #messageBox { margin-top: 10px; height: 1.2em; color: #ff0; }
   </style>
 </head>
 <body>
-  <h1>装備ジェネレータ</h1>
-  <button onclick="generate()">装備を生成</button>
-  <pre id="output"></pre>
+  <h2 id="floorTitle">階層: 1F</h2>
+  <pre id="map"></pre>
+  <div>
+    <button onclick="move(0, -1)">↑</button><br>
+    <button onclick="move(-1, 0)">←</button>
+    <button onclick="move(1, 0)">→</button><br>
+    <button onclick="move(0, 1)">↓</button>
+  </div>
+  <div>
+    <button onclick="toggleInventory()">道具</button>
+  </div>
+
+  <div id="promptBox" style="display:none; background:#333; padding:10px; margin-top:10px;">
+    <p>階段を進みますか？</p>
+    <button onclick="confirmStairs(true)">はい</button>
+    <button onclick="confirmStairs(false)">いいえ</button>
+  </div>
+
+  <div id="inventoryBox" style="display:none; background:#333; padding:10px; margin-top:10px;">
+    <p>所持アイテム一覧 (<span id="pageIndicator">1</span>)</p>
+    <ul id="inventoryList" style="text-align:left;"></ul>
+    <button onclick="changePage(-1)">前</button>
+    <button onclick="changePage(1)">次</button>
+    <button onclick="toggleInventory()">閉じる</button>
+  </div>
+
+  <div id="messageBox"></div>
 
   <script>
-    function random(min, max) {
-      return Math.floor(Math.random() * (max - min + 1)) + min;
-    }
+    const width = 40;
+    const height = 20;
+    let floor = 1;
+    let map, player, stairs;
+    let onStairs = false;
+    let facing = "down";
+    let weapons = [];
 
-    const equipmentList = [
-      { name: "鉄の剣", attackRange: [5, 10] },
-      { name: "鋼鉄の剣", attackRange: [7, 12] }
+    const weaponTypes = [
+      "鉄の剣", "鋼鉄の剣", "銀の剣", "金の剣", "黒曜石の剣",
+      "炎の剣", "氷の剣", "雷の剣", "魔剣レヴナント", "伝説の聖剣"
     ];
 
-    const rarities = ["Normal", "Rare", "Epic", "Legendary"];
-    const rarityToOPCount = {
-      Normal: [1, 3],
-      Rare: [1, 5],
-      Epic: [1, 7],
-      Legendary: [1, 10]
-    };
+    let inventory = [];
+    let currentPage = 0;
 
-    const optionPool = {
-      "Lifesteal": {
-        Normal: [3, 5],
-        Rare: [6, 9],
-        Epic: [10, 12],
-        Legendary: [13, 15]
-      },
-      "CritRate": {
-        Normal: [2, 4],
-        Rare: [5, 7],
-        Epic: [8, 10],
-        Legendary: [11, 15]
+    function createEmptyMap() {
+      return Array.from({ length: height }, () => Array(width).fill("■"));
+    }
+
+    function createRoom(map, x, y, w, h) {
+      for (let i = y; i < y + h; i++) {
+        for (let j = x; j < x + w; j++) {
+          if (i > 0 && j > 0 && i < height - 1 && j < width - 1) {
+            map[i][j] = "・";
+          }
+        }
       }
-    };
+    }
 
-    function generate() {
-      const rarity = rarities[random(0, 3)];
-      const equipment = equipmentList[random(0, equipmentList.length - 1)];
-      const attack = random(equipment.attackRange[0], equipment.attackRange[1]);
+    function connectRooms(map, x1, y1, x2, y2) {
+      let x = x1;
+      let y = y1;
+      while (x !== x2) {
+        map[y][x] = "・";
+        x += x < x2 ? 1 : -1;
+      }
+      while (y !== y2) {
+        map[y][x] = "・";
+        y += y < y2 ? 1 : -1;
+      }
+    }
 
-      const [minSlot, maxSlot] = rarityToOPCount[rarity];
-      const slotCount = random(minSlot, maxSlot);
-      const actualOPCount = random(0, slotCount);
+    function placeWeapons(map, rooms) {
+      weapons = [];
+      for (let i = 0; i < 3; i++) {
+        const room = rooms[Math.floor(Math.random() * rooms.length)];
+        const x = room.x + Math.floor(Math.random() * room.w);
+        const y = room.y + Math.floor(Math.random() * room.h);
+        const name = weaponTypes[Math.floor(Math.random() * weaponTypes.length)];
+        if (map[y][x] === "・") {
+          map[y][x] = "Ｗ";
+          weapons.push({ x, y, name });
+        }
+      }
+    }
 
-      let result = `<span class="${rarity.toLowerCase()}">[${rarity}]</span> ${equipment.name}\n`;
-      result += `Attack: ${attack}\nOptions (${slotCount}):\n`;
+    function generateMap() {
+      map = createEmptyMap();
+      let rooms = [];
+      for (let i = 0; i < 5; i++) {
+        let w = Math.floor(Math.random() * 6) + 4;
+        let h = Math.floor(Math.random() * 4) + 3;
+        let x = Math.floor(Math.random() * (width - w - 1)) + 1;
+        let y = Math.floor(Math.random() * (height - h - 1)) + 1;
+        createRoom(map, x, y, w, h);
+        if (rooms.length > 0) {
+          const prev = rooms[rooms.length - 1];
+          connectRooms(map, prev.x + Math.floor(prev.w / 2), prev.y + Math.floor(prev.h / 2),
+                             x + Math.floor(w / 2), y + Math.floor(h / 2));
+        }
+        rooms.push({ x, y, w, h });
+      }
+      player = { x: rooms[0].x + 1, y: rooms[0].y + 1 };
+      let last = rooms[rooms.length - 1];
+      stairs = { x: last.x + last.w - 2, y: last.y + last.h - 2 };
+      map[stairs.y][stairs.x] = "▣";
 
-      const keys = Object.keys(optionPool);
-      for (let i = 0; i < slotCount; i++) {
-        if (i < actualOPCount) {
-          const optName = keys[random(0, keys.length - 1)];
-          const range = optionPool[optName][rarity];
-          const val = random(range[0], range[1]);
-          result += ` - ${optName}: ${val}%\n`;
-        } else {
-          result += ` - Open Slot\n`;
+      placeWeapons(map, rooms);
+    }
+
+    function renderMap() {
+      let output = "";
+      const dirChar = {
+        up: '↑',
+        down: '↓',
+        left: '←',
+        right: '→'
+      };
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          if (x === player.x && y === player.y) {
+            output += dirChar[facing];
+          } else {
+            output += map[y][x];
+          }
+        }
+        output += "\n";
+      }
+      document.getElementById("map").innerText = output;
+      document.getElementById("floorTitle").textContent = "階層: " + floor + "F";
+    }
+
+    function move(dx, dy) {
+      if (onStairs || document.getElementById("inventoryBox").style.display === "block") return;
+
+      if (dx === 1) facing = "right";
+      if (dx === -1) facing = "left";
+      if (dy === 1) facing = "down";
+      if (dy === -1) facing = "up";
+
+      const nx = player.x + dx;
+      const ny = player.y + dy;
+      if (!map[ny] || !map[ny][nx]) return;
+
+      const cell = map[ny][nx];
+      if (["・", "▣", "Ｗ"].includes(cell)) {
+        player.x = nx;
+        player.y = ny;
+
+        if (cell === "Ｗ") {
+          const weapon = weapons.find(w => w.x === nx && w.y === ny);
+          if (inventory.length >= 28) {
+            showMessage(`${weapon.name}はバッグがいっぱいで持てない`);
+          } else {
+            inventory.push(weapon.name);
+            showMessage(`${weapon.name}を拾った`);
+            map[ny][nx] = "・";
+          }
+        }
+
+        if (cell === "▣") {
+          onStairs = true;
+          document.getElementById("promptBox").style.display = "block";
         }
       }
 
-      document.getElementById("output").innerHTML = result;
+      renderMap();
     }
+
+    function showMessage(text) {
+      const box = document.getElementById("messageBox");
+      box.textContent = text;
+      setTimeout(() => { box.textContent = ""; }, 3000);
+    }
+
+    function confirmStairs(yes) {
+      document.getElementById("promptBox").style.display = "none";
+      onStairs = false;
+      if (yes) {
+        floor++;
+        generateMap();
+        renderMap();
+      }
+    }
+
+    function toggleInventory() {
+      const box = document.getElementById("inventoryBox");
+      box.style.display = box.style.display === "block" ? "none" : "block";
+      renderInventory();
+    }
+
+    function renderInventory() {
+      const list = document.getElementById("inventoryList");
+      list.innerHTML = "";
+      const start = currentPage * 14;
+      const end = Math.min(start + 14, inventory.length);
+      for (let i = start; i < end; i++) {
+        const li = document.createElement("li");
+        li.textContent = inventory[i];
+        list.appendChild(li);
+      }
+      document.getElementById("pageIndicator").textContent = (currentPage + 1);
+    }
+
+    function changePage(delta) {
+      const maxPage = Math.floor((inventory.length - 1) / 14);
+      currentPage = Math.max(0, Math.min(maxPage, currentPage + delta));
+      renderInventory();
+    }
+
+    document.addEventListener("keydown", e => {
+      const key = e.key.toLowerCase();
+      if (key === "arrowup" || key === "w") move(0, -1);
+      if (key === "arrowdown" || key === "s") move(0, 1);
+      if (key === "arrowleft" || key === "a") move(-1, 0);
+      if (key === "arrowright" || key === "d") move(1, 0);
+    });
+
+    generateMap();
+    renderMap();
   </script>
 </body>
 </html>
