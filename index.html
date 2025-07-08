@@ -1,8 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>スマジョイ - ランキング</title>
+  <title>スマジョイ｜ランキング</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
       margin: 0;
@@ -10,60 +12,101 @@
       font-family: sans-serif;
       background: #111;
       color: #eee;
-      display: flex;
     }
-    /* サイドバー */
-    .sidebar {
-      width: 200px;
-      background: #222;
-      padding: 20px;
-      height: 100vh;
-      box-sizing: border-box;
+
+    .header {
       position: fixed;
       top: 0;
       left: 0;
+      width: 100%;
+      background: #222;
+      padding: 15px 20px;
+      font-size: 18px;
+      font-weight: bold;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid #333;
     }
+
+    .menu-toggle {
+      font-size: 24px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: -200px;
+      width: 200px;
+      height: 100%;
+      background: #1c1c1c;
+      padding: 20px;
+      box-sizing: border-box;
+      transition: left 0.3s ease;
+      z-index: 101;
+    }
+
+    .sidebar.active {
+      left: 0;
+    }
+
+    .overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+    }
+
+    .overlay.active {
+      display: block;
+    }
+
     .sidebar a {
       display: block;
       color: #fff;
       text-decoration: none;
       margin-bottom: 10px;
+      font-size: 16px;
     }
 
-    /* コンテンツ全体 */
     .main-content {
-      margin-left: 200px;
-      width: calc(100% - 200px);
+      padding: 90px 20px 40px 20px;
     }
 
-    /* 固定ヘッダー */
-    .header {
-      position: fixed;
-      top: 0;
-      left: 200px;
-      width: calc(100% - 200px);
-      background: #333;
-      padding: 15px;
+    .intro {
+      margin-bottom: 40px;
+    }
+
+    .intro h2 {
       font-size: 20px;
-      font-weight: bold;
-      z-index: 100;
-      text-align: center;
+      border-bottom: 1px solid #444;
+      padding-bottom: 4px;
+    }
+
+    .intro a {
+      color: #99ccee;
+      text-decoration: none;
     }
 
     .rankings {
       display: flex;
+      flex-wrap: wrap;
       justify-content: space-between;
-      margin-top: 70px; /* ヘッダーの高さ分 */
-      padding: 20px;
+      gap: 20px;
     }
 
     .ranking-table {
-      width: 49%;
+      flex: 1 1 45%;
       background: #1a1a1a;
       padding: 10px;
-      box-sizing: border-box;
-      border: 1px solid #444;
       border-radius: 5px;
+      border: 1px solid #333;
     }
 
     .ranking-table h2 {
@@ -84,54 +127,83 @@
     }
 
     img.icon {
-      width: 32px;
-      height: 32px;
-      border-radius: 4px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
     }
 
     tr:nth-child(even) {
       background: #222;
     }
+
+    @media screen and (max-width: 768px) {
+      .rankings {
+        flex-direction: column;
+      }
+    }
   </style>
 </head>
 <body>
 
-  <!-- サイドバー -->
-  <div class="sidebar">
+  <div class="sidebar" id="sidebar">
     <a href="#">👤 ログイン</a>
     <a href="#">📄 マイページ</a>
     <a href="#">📜 ルール確認</a>
+    <a href="#">📝 note記事</a>
   </div>
 
-  <!-- メインコンテンツ -->
-  <div class="main-content">
-    <div class="header">
-      スマジョイ｜クソルールレートランキング
+  <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <div class="header">
+    <span class="menu-toggle" onclick="toggleSidebar()">≡</span>
+    スマジョイ｜ランキング
+  </div>
+
+  <div class="main-content" onclick="closeSidebar()">
+    <div class="intro">
+      <h2>📘 スマジョイとは</h2>
+      <p>
+        スマジョイは、スマブラSPのスピリット／amiibo構築で戦うレートサイトです。<br>
+        ガチでもネタでも、愛があれば誰でも戦える。<br>
+        意味不明な称号、偏った育成、回復4積みも全部アリ。
+      </p>
+      <p><a href="#">▶ 遊び方ガイドを見る</a></p>
     </div>
 
     <div class="rankings">
-      <!-- スピリット -->
       <div class="ranking-table">
         <h2>スピリットルール</h2>
         <table>
           <tr><th>#</th><th>🖼</th><th>名前</th><th>🎮</th><th>レート</th></tr>
           <tr><td>1</td><td><img class="icon" src="icon1.png"></td><td>今朝未明</td><td><img class="icon" src="dedede.png"></td><td>1788</td></tr>
-          <tr><td>2</td><td><img class="icon" src="icon2.png"></td><td>ぬいぐる魔</td><td><img class="icon" src="ness.png"></td><td>1760</td></tr>
-          <!-- 以降ループ出力 -->
+          <tr><td>2</td><td><img class="icon" src="icon2.png"></td><td>おもち星人</td><td><img class="icon" src="ness.png"></td><td>1760</td></tr>
         </table>
       </div>
 
-      <!-- アミーボ -->
       <div class="ranking-table">
         <h2>アミーボルール</h2>
         <table>
           <tr><th>#</th><th>🖼</th><th>名前</th><th>🎮</th><th>レート</th></tr>
           <tr><td>1</td><td><img class="icon" src="icon3.png"></td><td>デデ子の主</td><td><img class="icon" src="dedede.png"></td><td>1811</td></tr>
-          <tr><td>2</td><td><img class="icon" src="icon4.png"></td><td>地蔵型ヨッシー</td><td><img class="icon" src="yoshi.png"></td><td>1750</td></tr>
-          <!-- 以降ループ出力 -->
+          <tr><td>2</td><td><img class="icon" src="icon4.png"></td><td>ぬいぐる魔</td><td><img class="icon" src="yoshi.png"></td><td>1750</td></tr>
         </table>
       </div>
     </div>
   </div>
+
+  <script>
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('overlay');
+      sidebar.classList.toggle('active');
+      overlay.classList.toggle('active');
+    }
+
+    function closeSidebar() {
+      document.getElementById('sidebar').classList.remove('active');
+      document.getElementById('overlay').classList.remove('active');
+    }
+  </script>
+
 </body>
 </html>
