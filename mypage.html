@@ -184,7 +184,11 @@
     onAuthStateChanged(auth, async (user) => {
     const loginBtn = document.getElementById("login-btn");
     const logoutBtn = document.getElementById("logout-btn");
-    const userInfo = document.getElementById("user-info").innerHTML = `<img src="${user.photoURL}" style="width:24px; border-radius:50%;"> ${user.displayName}`;;
+    const userInfo = document.getElementById("user-info");
+
+    loginBtn.style.display = "none";
+    logoutBtn.style.display = "block";
+    userInfo.innerHTML = `<img src="${user.photoURL}" style="width:24px; border-radius:50%;"> ${user.displayName}`;
   
     if (user) {
       loginBtn.style.display = "none";
