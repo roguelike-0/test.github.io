@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>編集｜スマジョイ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { background: #111; color: #eee; font-family: sans-serif; margin: 0; padding: 20px; }
+    .container { max-width: 600px; margin: 80px auto; background: #1a1a1a; padding: 20px; border-radius: 8px; border: 1px solid #333; }
+    h1 { text-align: center; color: #fff; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; }
+    input, textarea { width: 100%; padding: 8px; background: #222; border: 1px solid #444; color: #eee; border-radius: 4px; }
+    button { background: #444; color: #fff; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>プロフィール編集</h1>
+    <form id="profile-form">
+      <div class="form-group">
+        <label>表示名：</label>
+        <input type="text" id="displayName" />
+      </div>
+      <div class="form-group">
+        <label>アイコンURL：</label>
+        <input type="text" id="iconUrl" />
+      </div>
+      <div class="form-group">
+        <label>スピリッツ使用キャラURL：</label>
+        <input type="text" id="spiritsChar" />
+      </div>
+      <div class="form-group">
+        <label>amiibo使用キャラURL：</label>
+        <input type="text" id="amiiboChar" />
+      </div>
+      <div class="form-group">
+        <label>一言コメント：</label>
+        <textarea id="comment"></textarea>
+      </div>
+      <div style="text-align:center;">
+        <button type="submit">保存</button>
+      </div>
+    </form>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDMVAb0htcBm2Yv3uKpJ7Kmqyvhmr21b9o",
+      authDomain: "smajoy-8e047.firebaseapp.com",
+      projectId: "smajoy-8e047",
+      storageBucket: "smajoy-8e047.appspot.com",
+      messagingSenderId: "878614139782",
+      appId: "1:878614139782:web:a168073265950c74d71207",
+      measurementId: "G-9RJ4R5YYT9"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+
+    const form = document.getElementById("profile-form");
+    const displayName = document.getElementById("displayName");
+    const iconUrl = document.getElementById("iconUrl");
+    const spiritsChar = document.getElementById("spiritsChar");
+    const amiiboChar = document.getElementById("amiiboChar");
+    const comment = document.getElementById("comment");
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) return location.href = "index.html";
+
+      const ref = doc(db, "users", user.uid);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        const data = snap.data();
+        displayName.value = data.name || "";
+        iconUrl.value = data.icon || "";
+        spiritsChar.value = data.spiritsCharacter || "";
+        amiiboChar.value = data.amiiboCharacter || "";
+        comment.value = data.comment || "";
+      }
+
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        await setDoc(ref, {
+          name: displayName.value,
+          icon: iconUrl.value,
+          spiritsCharacter: spiritsChar.value,
+          amiiboCharacter: amiiboChar.value,
+          comment: comment.value,
+        });
+        alert("保存しました");
+        location.href = "mypage.html";
+      };
+    });
+  </script>
+</body>
+</html>
