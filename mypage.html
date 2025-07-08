@@ -67,7 +67,7 @@
       font-size: 16px;
     }
     .main-content {
-      padding: 70px 20px 40px 20px;
+      padding: 90px 20px 40px 20px;
     }
     .content-box {
       background: #1a1a1a;
@@ -189,7 +189,7 @@
     if (user) {
       loginBtn.style.display = "none";
       logoutBtn.style.display = "block";
-      userInfo.innerHTML = `<img src="${user.photoURL}" style="width:24px; border-radius:50%;"> ${user.displayName}`;
+      userInfo.innerHTML = `<img src="${user.photoURL}" style="width:24px; border-radius:25%;"> ${user.displayName}`;
   
       const ref = doc(db, "users", user.uid);
       const snap = await getDoc(ref);
