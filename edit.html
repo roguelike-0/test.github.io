@@ -70,25 +70,24 @@
       padding: 90px 20px 40px 20px;
     }
     .content-box {
-    background: #1a1a1a;
-    padding: 20px;
-    border-radius: 5px;
-    border: 1px solid #333;
-    max-width: 500px;     /* 最大幅を設定 */
-    margin: 0 auto;       /* 中央寄せ */
-    text-align: left;     /* ラベルとテキストは左寄せ */
-  }
-  
-  input, textarea {
-    width: 94%;          /* ボックス幅をコンテナに合わせる */
-    padding: 8px;
-    margin-top: 4px;
-    margin-bottom: 16px;
-    background: #222;
-    border: 1px solid #444;
-    color: #eee;
-    display: block;
-  }
+      background: #1a1a1a;
+      padding: 20px;
+      border-radius: 5px;
+      border: 1px solid #333;
+      max-width: 500px;
+      margin: 0 auto;
+      text-align: left;
+    }
+    input, textarea {
+      width: 94%;
+      padding: 8px;
+      margin-top: 4px;
+      margin-bottom: 16px;
+      background: #222;
+      border: 1px solid #444;
+      color: #eee;
+      display: block;
+    }
     button {
       background: #444;
       color: #eee;
@@ -99,8 +98,6 @@
   </style>
 </head>
 <body>
-
-  <!-- サイドバー -->
   <div class="sidebar" id="sidebar">
     <a href="#" id="login-btn" onclick="loginWithGoogle()">👤 Googleログイン</a>
     <a href="#" id="logout-btn" onclick="logout()" style="display:none;">🚪 ログアウト</a>
@@ -112,13 +109,11 @@
 
   <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 
-  <!-- ヘッダー -->
   <div class="header">
     <span class="menu-toggle" onclick="toggleSidebar()">≡</span>
     スマジョイ｜プロフィール編集
   </div>
 
-  <!-- メイン表示エリア -->
   <div class="main-content" onclick="closeSidebar()">
     <div class="content-box">
       <form id="edit-form">
@@ -142,36 +137,22 @@
     </div>
   </div>
 
-  <!-- サイドバー操作 -->
   <script>
     function toggleSidebar() {
       document.getElementById('sidebar').classList.toggle('active');
       document.getElementById('overlay').classList.toggle('active');
     }
-
     function closeSidebar() {
       document.getElementById('sidebar').classList.remove('active');
       document.getElementById('overlay').classList.remove('active');
     }
   </script>
 
-  <!-- Firebase連携 -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
     import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
-    import {
-      getAuth,
-      onAuthStateChanged,
-      signOut,
-      signInWithPopup,
-      GoogleAuthProvider
-    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
-    import {
-      getStorage,
-      ref as storageRef,
-      uploadBytes,
-      getDownloadURL
-    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js";
+    import { getAuth, onAuthStateChanged, signOut, signInWithPopup, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+    import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDMVAb0htcBm2Yv3uKpJ7Kmqyvhmr21b9o",
@@ -188,7 +169,6 @@
     const provider = new GoogleAuthProvider();
     const storage = getStorage(app);
 
-    // ログイン処理
     window.loginWithGoogle = async () => {
       try {
         const result = await signInWithPopup(auth, provider);
@@ -199,52 +179,42 @@
       }
     };
 
-    // ログアウト
     window.logout = () => {
-      signOut(auth).then(() => {
-        alert("ログアウトしました");
-      });
+      signOut(auth).then(() => alert("ログアウトしました"));
     };
 
-    // 状態監視＋フォーム表示・保存
     onAuthStateChanged(auth, async (user) => {
-      const loginBtn = document.getElementById("login-btn");
-      const logoutBtn = document.getElementById("logout-btn");
-      const userInfo = document.getElementById("user-info");
+      if (!user) return location.href = "index.html";
 
-      if (user) {
-        loginBtn.style.display = "none";
-        logoutBtn.style.display = "block";
-        userInfo.innerHTML = `<img src="${user.photoURL}" style="width:24px; border-radius:50%;"> ${user.displayName}`;
+      document.getElementById("login-btn").style.display = "none";
+      document.getElementById("logout-btn").style.display = "block";
+      document.getElementById("user-info").innerHTML = `<img src="${user.photoURL}" style="width:24px; border-radius:50%;"> ${user.displayName}`;
 
-        const ref = doc(db, "users", user.uid);
-        const snap = await getDoc(ref);
-        if (snap.exists()) {
-          const data = snap.data();
-          document.getElementById("name").value = data.name || "";
-          document.getElementById("spiritsCharacter").value = data.spiritsCharacter || "";
-          document.getElementById("amiiboCharacter").value = data.amiiboCharacter || "";
-          document.getElementById("comment").value = data.comment || "";
-        }
+      const ref = doc(db, "users", user.uid);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        const data = snap.data();
+        document.getElementById("name").value = data.name || "";
+        document.getElementById("spiritsCharacter").value = data.spiritsCharacter || "";
+        document.getElementById("amiiboCharacter").value = data.amiiboCharacter || "";
+        document.getElementById("comment").value = data.comment || "";
+      }
 
-        document.getElementById("edit-form").addEventListener("submit", async (e) => {
+      document.getElementById("edit-form").addEventListener("submit", async (e) => {
         e.preventDefault();
-      
-        const fileInput = document.getElementById("icon-upload");
-        const file = fileInput?.files?.[0];
-      
+        const file = document.getElementById("icon-upload").files[0];
         let iconURL = "";
-      
+
         try {
           if (file) {
             const iconRef = storageRef(storage, `user_icons/${user.uid}`);
             await uploadBytes(iconRef, file);
             iconURL = await getDownloadURL(iconRef);
           } else {
-            const snapNow = await getDoc(doc(db, "users", user.uid));
-            iconURL = snapNow.exists() ? (snapNow.data().icon || "") : "";
+            const freshSnap = await getDoc(ref);
+            iconURL = freshSnap.exists() ? (freshSnap.data().icon || "") : "";
           }
-      
+
           const updateData = {
             name: document.getElementById("name").value,
             spiritsCharacter: document.getElementById("spiritsCharacter").value,
@@ -252,16 +222,15 @@
             comment: document.getElementById("comment").value,
             icon: iconURL
           };
-      
-          await setDoc(doc(db, "users", user.uid), updateData);
+
+          await setDoc(ref, updateData);
           alert("保存しました！");
           location.href = "mypage.html";
-      
         } catch (err) {
-          console.error("保存時エラー:", err);
+          console.error("保存エラー", err);
           alert("保存に失敗しました");
         }
-                
+      });
     });
   </script>
 </body>
