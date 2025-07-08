@@ -212,7 +212,7 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-  import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+  import { getFirestore, collection, getDocs, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
   import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
   const firebaseConfig = {
@@ -251,11 +251,24 @@
   renderRanking("spirits-ranking", ["rankings", "spirits", "players"]);
   renderRanking("amiibo-ranking", ["rankings", "amiibo", "players"]);
 
-  // ログイン処理
+  // Googleログイン処理（初回登録付き）
   window.loginWithGoogle = async () => {
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
+
+      const userRef = doc(db, "users", user.uid);
+      const snap = await getDoc(userRef);
+      if (!snap.exists()) {
+        await setDoc(userRef, {
+          name: user.displayName || "名無しのスマブラー",
+          icon: user.photoURL || "",
+          spiritsCharacter: "",
+          amiiboCharacter: "",
+          comment: ""
+        });
+      }
+
       alert(`ようこそ、${user.displayName} さん！`);
     } catch (error) {
       alert("ログインに失敗しました。");
@@ -275,21 +288,20 @@
     const loginBtn = document.getElementById("login-btn");
     const logoutBtn = document.getElementById("logout-btn");
     const userInfo = document.getElementById("user-info");
+    const mypageLink = document.getElementById("mypage-link");
 
-const mypageLink = document.getElementById("mypage-link");
-
-if (user) {
-  loginBtn.style.display = "none";
-  logoutBtn.style.display = "block";
-  userInfo.innerHTML = `<img src="${user.photoURL}" style="width:24px; border-radius:50%;"> ${user.displayName}`;
-  mypageLink.style.display = "block";
-} else {
-  loginBtn.style.display = "block";
-  logoutBtn.style.display = "none";
-  userInfo.innerHTML = "";
-  mypageLink.style.display = "none";
-}
-
+    if (user) {
+      loginBtn.style.display = "none";
+      logoutBtn.style.display = "block";
+      userInfo.innerHTML = `<img src="${user.photoURL}" style="width:24px; border-radius:50%;"> ${user.displayName}`;
+      mypageLink.style.display = "block";
+    } else {
+      loginBtn.style.display = "block";
+      logoutBtn.style.display = "none";
+      userInfo.innerHTML = "";
+      mypageLink.style.display = "none";
+    }
   });
 </script>
+
 
