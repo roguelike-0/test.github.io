@@ -1,66 +1,79 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>マイページ｜スマジョイ</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { background: #111; color: #eee; font-family: sans-serif; margin: 0; padding: 20px; }
+    .container { max-width: 600px; margin: 80px auto; background: #1a1a1a; padding: 20px; border-radius: 8px; border: 1px solid #333; }
+    h1 { text-align: center; color: #fff; }
+    .row { margin-bottom: 15px; }
+    .label { font-weight: bold; display: block; margin-bottom: 5px; }
+    img.icon { width: 48px; height: 48px; border-radius: 50%; }
+    img.char { width: 28px; }
+    .button { background: #444; color: #fff; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+  </style>
 </head>
 <body>
-  <h1>マイページ</h1>
-  <form id="profile-form">
-    <p>表示名：<input type="text" id="displayName" /></p>
-    <p>アイコンURL：<input type="text" id="iconUrl" /></p>
-    <p>スピリッツ使用キャラ：<input type="text" id="spiritsChar" /></p>
-    <p>amiibo使用キャラ：<input type="text" id="amiiboChar" /></p>
-    <p>一言コメント：<textarea id="comment"></textarea></p>
-    <button type="submit">保存</button>
-  </form>
+  <div class="container">
+    <h1>マイページ</h1>
+    <div class="row">
+      <span class="label">表示名：</span>
+      <span id="displayName"></span>
+    </div>
+    <div class="row">
+      <span class="label">アイコン：</span>
+      <img id="iconImg" class="icon" />
+    </div>
+    <div class="row">
+      <span class="label">スピリッツ使用キャラ：</span>
+      <img id="spiritsImg" class="char" />
+    </div>
+    <div class="row">
+      <span class="label">amiibo使用キャラ：</span>
+      <img id="amiiboImg" class="char" />
+    </div>
+    <div class="row">
+      <span class="label">一言コメント：</span>
+      <span id="comment"></span>
+    </div>
+    <div style="text-align:center;">
+      <button class="button" onclick="location.href='edit.html'">編集する</button>
+    </div>
+  </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+    import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
     const firebaseConfig = {
-      // ここにfirebaseConfigをコピペ
+      apiKey: "AIzaSyDMVAb0htcBm2Yv3uKpJ7Kmqyvhmr21b9o",
+      authDomain: "smajoy-8e047.firebaseapp.com",
+      projectId: "smajoy-8e047",
+      storageBucket: "smajoy-8e047.appspot.com",
+      messagingSenderId: "878614139782",
+      appId: "1:878614139782:web:a168073265950c74d71207",
+      measurementId: "G-9RJ4R5YYT9"
     };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
 
-    const form = document.getElementById("profile-form");
-    const displayName = document.getElementById("displayName");
-    const iconUrl = document.getElementById("iconUrl");
-    const spiritsChar = document.getElementById("spiritsChar");
-    const amiiboChar = document.getElementById("amiiboChar");
-    const comment = document.getElementById("comment");
-
     onAuthStateChanged(auth, async (user) => {
       if (!user) return location.href = "index.html";
-
       const ref = doc(db, "users", user.uid);
       const snap = await getDoc(ref);
       if (snap.exists()) {
         const data = snap.data();
-        displayName.value = data.name || "";
-        iconUrl.value = data.icon || "";
-        spiritsChar.value = data.spiritsCharacter || "";
-        amiiboChar.value = data.amiiboCharacter || "";
-        comment.value = data.comment || "";
+        document.getElementById("displayName").textContent = data.name || "";
+        document.getElementById("iconImg").src = data.icon || "";
+        document.getElementById("spiritsImg").src = data.spiritsCharacter || "";
+        document.getElementById("amiiboImg").src = data.amiiboCharacter || "";
+        document.getElementById("comment").textContent = data.comment || "";
       }
-
-      form.onsubmit = async (e) => {
-        e.preventDefault();
-        await setDoc(ref, {
-          name: displayName.value,
-          icon: iconUrl.value,
-          spiritsCharacter: spiritsChar.value,
-          amiiboCharacter: amiiboChar.value,
-          comment: comment.value,
-        });
-        alert("保存しました");
-      };
     });
   </script>
 </body>
