@@ -2,235 +2,85 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>武器ドロップ対応マップ</title>
+  <title>スマジョイ - TOP</title>
   <style>
-    body { background: #111; color: #eee; font-family: monospace; text-align: center; }
-    pre { background: #222; padding: 10px; display: inline-block; line-height: 1.2em; font-size: 16px; }
-    button { margin: 4px; padding: 8px 12px; font-size: 16px; }
-    #messageBox { margin-top: 10px; height: 1.2em; color: #ff0; }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: monospace;
+      background: #111;
+      color: #eee;
+      display: flex;
+      height: 100vh;
+    }
+    .column {
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .left {
+      width: 20%;
+      background: #222;
+      border-right: 1px solid #444;
+    }
+    .middle {
+      width: 40%;
+      background: #181818;
+      border-right: 1px solid #444;
+    }
+    .right {
+      width: 40%;
+      background: #181818;
+    }
+    h2 {
+      border-bottom: 1px solid #555;
+      padding-bottom: 5px;
+      margin-top: 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 4px;
+      text-align: left;
+      border-bottom: 1px solid #333;
+    }
+    tr:nth-child(even) {
+      background: #1f1f1f;
+    }
   </style>
 </head>
 <body>
-  <h2 id="floorTitle">階層: 1F</h2>
-  <pre id="map"></pre>
-  <div>
-    <button onclick="move(0, -1)">↑</button><br>
-    <button onclick="move(-1, 0)">←</button>
-    <button onclick="move(1, 0)">→</button><br>
-    <button onclick="move(0, 1)">↓</button>
-  </div>
-  <div>
-    <button onclick="toggleInventory()">道具</button>
+  <div class="column left">
+    <h2>メニュー</h2>
+    <p>👤 ログイン状態：未ログイン</p>
+    <p><a href="#">▶ マイページ</a></p>
+    <p><a href="#">▶ ルール確認</a></p>
+    <p>📅 現在期：凍土の宴（1〜3月）</p>
+    <p><a href="#">📄 最新note</a></p>
   </div>
 
-  <div id="promptBox" style="display:none; background:#333; padding:10px; margin-top:10px;">
-    <p>階段を進みますか？</p>
-    <button onclick="confirmStairs(true)">はい</button>
-    <button onclick="confirmStairs(false)">いいえ</button>
+  <div class="column middle">
+    <h2>スピリット ランキング</h2>
+    <table>
+      <tr><th>#</th><th>名前</th><th>レート</th><th>称号</th></tr>
+      <!-- ↓ループで出力 -->
+      <tr><td>1</td><td>今朝未明</td><td>1722</td><td>回復神官</td></tr>
+      <tr><td>2</td><td>おもち星人</td><td>1705</td><td>盾だけ使うやつ</td></tr>
+      <!-- ... -->
+    </table>
   </div>
 
-  <div id="inventoryBox" style="display:none; background:#333; padding:10px; margin-top:10px;">
-    <p>所持アイテム一覧 (<span id="pageIndicator">1</span>)</p>
-    <ul id="inventoryList" style="text-align:left;"></ul>
-    <button onclick="changePage(-1)">前</button>
-    <button onclick="changePage(1)">次</button>
-    <button onclick="toggleInventory()">閉じる</button>
+  <div class="column right">
+    <h2>amiibo ランキング</h2>
+    <table>
+      <tr><th>#</th><th>名前</th><th>レート</th><th>称号</th></tr>
+      <!-- ↓ループで出力 -->
+      <tr><td>1</td><td>デデ子の主</td><td>1780</td><td>崖で育った男</td></tr>
+      <tr><td>2</td><td>ぬいぐる魔</td><td>1744</td><td>躾失敗型</td></tr>
+      <!-- ... -->
+    </table>
   </div>
-
-  <div id="messageBox"></div>
-
-  <script>
-    const width = 40;
-    const height = 20;
-    let floor = 1;
-    let map, player, stairs;
-    let onStairs = false;
-    let facing = "down";
-    let weapons = [];
-
-    const weaponTypes = [
-      "鉄の剣", "鋼鉄の剣", "銀の剣", "金の剣", "黒曜石の剣",
-      "炎の剣", "氷の剣", "雷の剣", "魔剣レヴナント", "伝説の聖剣"
-    ];
-
-    let inventory = [];
-    let currentPage = 0;
-
-    function createEmptyMap() {
-      return Array.from({ length: height }, () => Array(width).fill("■"));
-    }
-
-    function createRoom(map, x, y, w, h) {
-      for (let i = y; i < y + h; i++) {
-        for (let j = x; j < x + w; j++) {
-          if (i > 0 && j > 0 && i < height - 1 && j < width - 1) {
-            map[i][j] = "・";
-          }
-        }
-      }
-    }
-
-    function connectRooms(map, x1, y1, x2, y2) {
-      let x = x1;
-      let y = y1;
-      while (x !== x2) {
-        map[y][x] = "・";
-        x += x < x2 ? 1 : -1;
-      }
-      while (y !== y2) {
-        map[y][x] = "・";
-        y += y < y2 ? 1 : -1;
-      }
-    }
-
-    function placeWeapons(map, rooms) {
-      weapons = [];
-      for (let i = 0; i < 3; i++) {
-        const room = rooms[Math.floor(Math.random() * rooms.length)];
-        const x = room.x + Math.floor(Math.random() * room.w);
-        const y = room.y + Math.floor(Math.random() * room.h);
-        const name = weaponTypes[Math.floor(Math.random() * weaponTypes.length)];
-        if (map[y][x] === "・") {
-          map[y][x] = "Ｗ";
-          weapons.push({ x, y, name });
-        }
-      }
-    }
-
-    function generateMap() {
-      map = createEmptyMap();
-      let rooms = [];
-      for (let i = 0; i < 5; i++) {
-        let w = Math.floor(Math.random() * 6) + 4;
-        let h = Math.floor(Math.random() * 4) + 3;
-        let x = Math.floor(Math.random() * (width - w - 1)) + 1;
-        let y = Math.floor(Math.random() * (height - h - 1)) + 1;
-        createRoom(map, x, y, w, h);
-        if (rooms.length > 0) {
-          const prev = rooms[rooms.length - 1];
-          connectRooms(map, prev.x + Math.floor(prev.w / 2), prev.y + Math.floor(prev.h / 2),
-                             x + Math.floor(w / 2), y + Math.floor(h / 2));
-        }
-        rooms.push({ x, y, w, h });
-      }
-      player = { x: rooms[0].x + 1, y: rooms[0].y + 1 };
-      let last = rooms[rooms.length - 1];
-      stairs = { x: last.x + last.w - 2, y: last.y + last.h - 2 };
-      map[stairs.y][stairs.x] = "▣";
-
-      placeWeapons(map, rooms);
-    }
-
-    function renderMap() {
-      let output = "";
-      const dirChar = {
-        up: '↑',
-        down: '↓',
-        left: '←',
-        right: '→'
-      };
-      for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-          if (x === player.x && y === player.y) {
-            output += dirChar[facing];
-          } else {
-            output += map[y][x];
-          }
-        }
-        output += "\n";
-      }
-      document.getElementById("map").innerText = output;
-      document.getElementById("floorTitle").textContent = "階層: " + floor + "F";
-    }
-
-    function move(dx, dy) {
-      if (onStairs || document.getElementById("inventoryBox").style.display === "block") return;
-
-      if (dx === 1) facing = "right";
-      if (dx === -1) facing = "left";
-      if (dy === 1) facing = "down";
-      if (dy === -1) facing = "up";
-
-      const nx = player.x + dx;
-      const ny = player.y + dy;
-      if (!map[ny] || !map[ny][nx]) return;
-
-      const cell = map[ny][nx];
-      if (["・", "▣", "Ｗ"].includes(cell)) {
-        player.x = nx;
-        player.y = ny;
-
-        if (cell === "Ｗ") {
-          const weapon = weapons.find(w => w.x === nx && w.y === ny);
-          if (inventory.length >= 28) {
-            showMessage(`${weapon.name}はバッグがいっぱいで持てない`);
-          } else {
-            inventory.push(weapon.name);
-            showMessage(`${weapon.name}を拾った`);
-            map[ny][nx] = "・";
-          }
-        }
-
-        if (cell === "▣") {
-          onStairs = true;
-          document.getElementById("promptBox").style.display = "block";
-        }
-      }
-
-      renderMap();
-    }
-
-    function showMessage(text) {
-      const box = document.getElementById("messageBox");
-      box.textContent = text;
-      setTimeout(() => { box.textContent = ""; }, 3000);
-    }
-
-    function confirmStairs(yes) {
-      document.getElementById("promptBox").style.display = "none";
-      onStairs = false;
-      if (yes) {
-        floor++;
-        generateMap();
-        renderMap();
-      }
-    }
-
-    function toggleInventory() {
-      const box = document.getElementById("inventoryBox");
-      box.style.display = box.style.display === "block" ? "none" : "block";
-      renderInventory();
-    }
-
-    function renderInventory() {
-      const list = document.getElementById("inventoryList");
-      list.innerHTML = "";
-      const start = currentPage * 14;
-      const end = Math.min(start + 14, inventory.length);
-      for (let i = start; i < end; i++) {
-        const li = document.createElement("li");
-        li.textContent = inventory[i];
-        list.appendChild(li);
-      }
-      document.getElementById("pageIndicator").textContent = (currentPage + 1);
-    }
-
-    function changePage(delta) {
-      const maxPage = Math.floor((inventory.length - 1) / 14);
-      currentPage = Math.max(0, Math.min(maxPage, currentPage + delta));
-      renderInventory();
-    }
-
-    document.addEventListener("keydown", e => {
-      const key = e.key.toLowerCase();
-      if (key === "arrowup" || key === "w") move(0, -1);
-      if (key === "arrowdown" || key === "s") move(0, 1);
-      if (key === "arrowleft" || key === "a") move(-1, 0);
-      if (key === "arrowright" || key === "d") move(1, 0);
-    });
-
-    generateMap();
-    renderMap();
-  </script>
 </body>
 </html>
