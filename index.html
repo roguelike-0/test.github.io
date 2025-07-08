@@ -2,85 +2,136 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>スマジョイ - TOP</title>
+  <title>スマジョイ - ランキング</title>
   <style>
     body {
       margin: 0;
       padding: 0;
-      font-family: monospace;
+      font-family: sans-serif;
       background: #111;
       color: #eee;
       display: flex;
-      height: 100vh;
     }
-    .column {
-      padding: 20px;
-      overflow-y: auto;
-    }
-    .left {
-      width: 20%;
+    /* サイドバー */
+    .sidebar {
+      width: 200px;
       background: #222;
-      border-right: 1px solid #444;
+      padding: 20px;
+      height: 100vh;
+      box-sizing: border-box;
+      position: fixed;
+      top: 0;
+      left: 0;
     }
-    .middle {
-      width: 40%;
-      background: #181818;
-      border-right: 1px solid #444;
+    .sidebar a {
+      display: block;
+      color: #fff;
+      text-decoration: none;
+      margin-bottom: 10px;
     }
-    .right {
-      width: 40%;
-      background: #181818;
+
+    /* コンテンツ全体 */
+    .main-content {
+      margin-left: 200px;
+      width: calc(100% - 200px);
     }
-    h2 {
-      border-bottom: 1px solid #555;
-      padding-bottom: 5px;
+
+    /* 固定ヘッダー */
+    .header {
+      position: fixed;
+      top: 0;
+      left: 200px;
+      width: calc(100% - 200px);
+      background: #333;
+      padding: 15px;
+      font-size: 20px;
+      font-weight: bold;
+      z-index: 100;
+      text-align: center;
+    }
+
+    .rankings {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 70px; /* ヘッダーの高さ分 */
+      padding: 20px;
+    }
+
+    .ranking-table {
+      width: 49%;
+      background: #1a1a1a;
+      padding: 10px;
+      box-sizing: border-box;
+      border: 1px solid #444;
+      border-radius: 5px;
+    }
+
+    .ranking-table h2 {
+      text-align: center;
       margin-top: 0;
     }
+
     table {
       width: 100%;
       border-collapse: collapse;
       font-size: 14px;
     }
+
     th, td {
-      padding: 4px;
+      padding: 6px;
       text-align: left;
       border-bottom: 1px solid #333;
     }
+
+    img.icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 4px;
+    }
+
     tr:nth-child(even) {
-      background: #1f1f1f;
+      background: #222;
     }
   </style>
 </head>
 <body>
-  <div class="column left">
-    <h2>メニュー</h2>
-    <p>👤 ログイン状態：未ログイン</p>
-    <p><a href="#">▶ マイページ</a></p>
-    <p><a href="#">▶ ルール確認</a></p>
-    <p>📅 現在期：凍土の宴（1〜3月）</p>
-    <p><a href="#">📄 最新note</a></p>
+
+  <!-- サイドバー -->
+  <div class="sidebar">
+    <a href="#">👤 ログイン</a>
+    <a href="#">📄 マイページ</a>
+    <a href="#">📜 ルール確認</a>
   </div>
 
-  <div class="column middle">
-    <h2>スピリット ランキング</h2>
-    <table>
-      <tr><th>#</th><th>名前</th><th>レート</th><th>称号</th></tr>
-      <!-- ↓ループで出力 -->
-      <tr><td>1</td><td>今朝未明</td><td>1722</td><td>回復神官</td></tr>
-      <tr><td>2</td><td>おもち星人</td><td>1705</td><td>盾だけ使うやつ</td></tr>
-      <!-- ... -->
-    </table>
-  </div>
+  <!-- メインコンテンツ -->
+  <div class="main-content">
+    <div class="header">
+      スマジョイ｜クソルールレートランキング
+    </div>
 
-  <div class="column right">
-    <h2>amiibo ランキング</h2>
-    <table>
-      <tr><th>#</th><th>名前</th><th>レート</th><th>称号</th></tr>
-      <!-- ↓ループで出力 -->
-      <tr><td>1</td><td>デデ子の主</td><td>1780</td><td>崖で育った男</td></tr>
-      <tr><td>2</td><td>ぬいぐる魔</td><td>1744</td><td>躾失敗型</td></tr>
-      <!-- ... -->
-    </table>
+    <div class="rankings">
+      <!-- スピリット -->
+      <div class="ranking-table">
+        <h2>スピリットルール</h2>
+        <table>
+          <tr><th>#</th><th>🖼</th><th>名前</th><th>🎮</th><th>レート</th></tr>
+          <tr><td>1</td><td><img class="icon" src="icon1.png"></td><td>今朝未明</td><td><img class="icon" src="dedede.png"></td><td>1788</td></tr>
+          <tr><td>2</td><td><img class="icon" src="icon2.png"></td><td>ぬいぐる魔</td><td><img class="icon" src="ness.png"></td><td>1760</td></tr>
+          <!-- 以降ループ出力 -->
+        </table>
+      </div>
+
+      <!-- アミーボ -->
+      <div class="ranking-table">
+        <h2>アミーボルール</h2>
+        <table>
+          <tr><th>#</th><th>🖼</th><th>名前</th><th>🎮</th><th>レート</th></tr>
+          <tr><td>1</td><td><img class="icon" src="icon3.png"></td><td>デデ子の主</td><td><img class="icon" src="dedede.png"></td><td>1811</td></tr>
+          <tr><td>2</td><td><img class="icon" src="icon4.png"></td><td>地蔵型ヨッシー</td><td><img class="icon" src="yoshi.png"></td><td>1750</td></tr>
+          <!-- 以降ループ出力 -->
+        </table>
+      </div>
+    </div>
   </div>
 </body>
 </html>
