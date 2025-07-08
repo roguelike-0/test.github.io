@@ -12,7 +12,6 @@
       background: #111;
       color: #eee;
     }
-
     .header {
       position: fixed;
       top: 0;
@@ -27,13 +26,11 @@
       align-items: center;
       border-bottom: 1px solid #333;
     }
-
     .menu-toggle {
       font-size: 24px;
       cursor: pointer;
       margin-right: 10px;
     }
-
     .sidebar {
       position: fixed;
       top: 0;
@@ -46,11 +43,9 @@
       transition: left 0.3s ease;
       z-index: 101;
     }
-
     .sidebar.active {
       left: 0;
     }
-
     .overlay {
       display: none;
       position: fixed;
@@ -61,11 +56,9 @@
       background: rgba(0, 0, 0, 0.5);
       z-index: 100;
     }
-
     .overlay.active {
       display: block;
     }
-
     .sidebar a {
       display: block;
       color: #fff;
@@ -73,84 +66,84 @@
       margin-bottom: 10px;
       font-size: 16px;
     }
-
     .main-content {
       padding: 90px 20px 40px 20px;
+    }
+    .content-box {
+      background: #1a1a1a;
+      padding: 20px;
+      border-radius: 5px;
+      border: 1px solid #333;
       max-width: 600px;
       margin: 0 auto;
     }
-
-    h1 {
-      text-align: center;
-      margin-bottom: 30px;
-    }
-
-    form p {
-      margin-bottom: 15px;
-    }
-
-    input[type="text"],
-    textarea {
+    input, textarea {
       width: 100%;
       padding: 8px;
+      margin-top: 4px;
+      margin-bottom: 16px;
       background: #222;
       border: 1px solid #444;
       color: #eee;
-      border-radius: 4px;
     }
-
-    textarea {
-      resize: vertical;
-    }
-
     button {
       background: #444;
       color: #eee;
-      padding: 10px 20px;
       border: none;
-      border-radius: 5px;
+      padding: 10px 20px;
       cursor: pointer;
-    }
-
-    button:hover {
-      background: #666;
     }
   </style>
 </head>
 <body>
 
+  <!-- サイドバー -->
   <div class="sidebar" id="sidebar">
-    <a href="index.html">🏠 TOP</a>
+    <a href="#" id="login-btn" onclick="loginWithGoogle()">👤 Googleログイン</a>
+    <a href="#" id="logout-btn" onclick="logout()" style="display:none;">🚪 ログアウト</a>
+    <div id="user-info" style="margin: 10px 0; font-size: 14px;"></div>
+    <a href="index.html">🏠 トップ</a>
     <a href="mypage.html">📄 マイページ</a>
-    <a href="#">📄 レート対戦</a>
-    <a href="#">📜 ルール確認</a>
-    <a href="#">📄 サイトについて</a>
+    <a href="edit.html">✏️ プロフィール編集</a>
   </div>
 
   <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 
+  <!-- ヘッダー -->
   <div class="header">
     <span class="menu-toggle" onclick="toggleSidebar()">≡</span>
     スマジョイ｜プロフィール編集
   </div>
 
+  <!-- メイン表示エリア -->
   <div class="main-content" onclick="closeSidebar()">
-    <form id="profile-form">
-      <p>プレイヤーネーム<input type="text" id="displayName" /></p>
-      <p>アイコン<input type="text" id="iconUrl" /></p>
-      <p>スピリッツ使用キャラ<input type="text" id="spiritsChar" /></p>
-      <p>amiibo使用キャラ<input type="text" id="amiiboChar" /></p>
-      <p>コメント<textarea id="comment"></textarea></p>
-      <button type="submit">保存</button>
-    </form>
+    <div class="content-box">
+      <form id="edit-form">
+        <label>表示名（ニックネーム）</label>
+        <input type="text" id="name" />
+
+        <label>スピリッツ使用キャラ</label>
+        <input type="text" id="spiritsCharacter" />
+
+        <label>amiibo使用キャラ</label>
+        <input type="text" id="amiiboCharacter" />
+
+        <label>プロフィールコメント</label>
+        <textarea id="comment" rows="4"></textarea>
+
+        <label>アイコン画像URL</label>
+        <input type="text" id="icon" />
+
+        <button type="submit">保存する</button>
+      </form>
+    </div>
   </div>
 
+  <!-- サイドバー操作 -->
   <script>
     function toggleSidebar() {
-      const sidebar = document.getElementById('sidebar');
-      const overlay = document.getElementById('overlay');
-      sidebar.classList.toggle('active');
-      overlay.classList.toggle('active');
+      document.getElementById('sidebar').classList.toggle('active');
+      document.getElementById('overlay').classList.toggle('active');
     }
 
     function closeSidebar() {
@@ -159,10 +152,17 @@
     }
   </script>
 
+  <!-- Firebase & 認証＆保存処理 -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
     import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+    import {
+      getAuth,
+      onAuthStateChanged,
+      signOut,
+      signInWithPopup,
+      GoogleAuthProvider
+    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDMVAb0htcBm2Yv3uKpJ7Kmqyvhmr21b9o",
@@ -170,49 +170,71 @@
       projectId: "smajoy-8e047",
       storageBucket: "smajoy-8e047.appspot.com",
       messagingSenderId: "878614139782",
-      appId: "1:878614139782:web:a168073265950c74d71207",
-      measurementId: "G-9RJ4R5YYT9"
+      appId: "1:878614139782:web:a168073265950c74d71207"
     };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
 
-    const form = document.getElementById("profile-form");
-    const displayName = document.getElementById("displayName");
-    const iconUrl = document.getElementById("iconUrl");
-    const spiritsChar = document.getElementById("spiritsChar");
-    const amiiboChar = document.getElementById("amiiboChar");
-    const comment = document.getElementById("comment");
-
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) return location.href = "index.html";
-
-      const ref = doc(db, "users", user.uid);
-      const snap = await getDoc(ref);
-      if (snap.exists()) {
-        const data = snap.data();
-        displayName.value = data.name || "";
-        iconUrl.value = data.icon || "";
-        spiritsChar.value = data.spiritsCharacter || "";
-        amiiboChar.value = data.amiiboCharacter || "";
-        comment.value = data.comment || "";
+    // ログイン処理
+    window.loginWithGoogle = async () => {
+      try {
+        const result = await signInWithPopup(auth, provider);
+        alert(`ようこそ、${result.user.displayName} さん！`);
+      } catch (error) {
+        alert("ログインに失敗しました。");
+        console.error(error);
       }
+    };
 
-      form.onsubmit = async (e) => {
-        e.preventDefault();
-        await setDoc(ref, {
-          name: displayName.value,
-          icon: iconUrl.value,
-          spiritsCharacter: spiritsChar.value,
-          amiiboCharacter: amiiboChar.value,
-          comment: comment.value,
+    // ログアウト処理
+    window.logout = () => {
+      signOut(auth).then(() => {
+        alert("ログアウトしました");
+      });
+    };
+
+    // ログイン状態監視＋フォーム操作
+    onAuthStateChanged(auth, async (user) => {
+      const loginBtn = document.getElementById("login-btn");
+      const logoutBtn = document.getElementById("logout-btn");
+      const userInfo = document.getElementById("user-info");
+
+      if (user) {
+        loginBtn.style.display = "none";
+        logoutBtn.style.display = "block";
+        userInfo.innerHTML = `<img src="${user.photoURL}" style="width:24px; border-radius:50%;"> ${user.displayName}`;
+
+        const ref = doc(db, "users", user.uid);
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          const data = snap.data();
+          document.getElementById("name").value = data.name || "";
+          document.getElementById("spiritsCharacter").value = data.spiritsCharacter || "";
+          document.getElementById("amiiboCharacter").value = data.amiiboCharacter || "";
+          document.getElementById("comment").value = data.comment || "";
+          document.getElementById("icon").value = data.icon || "";
+        }
+
+        document.getElementById("edit-form").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const updateData = {
+            name: document.getElementById("name").value,
+            spiritsCharacter: document.getElementById("spiritsCharacter").value,
+            amiiboCharacter: document.getElementById("amiiboCharacter").value,
+            comment: document.getElementById("comment").value,
+            icon: document.getElementById("icon").value,
+          };
+          await setDoc(ref, updateData);
+          alert("保存しました！");
+          location.href = "mypage.html";
         });
-        alert("保存しました");
-        location.href = "mypage.html";
-      };
+      } else {
+        location.href = "index.html";
+      }
     });
   </script>
-
 </body>
 </html>
