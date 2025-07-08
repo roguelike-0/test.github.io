@@ -96,17 +96,26 @@
   </style>
 </head>
 <body>
+
+  <!-- サイドバー -->
   <div class="sidebar" id="sidebar">
+    <a href="#" id="login-btn" onclick="loginWithGoogle()">👤 Googleログイン</a>
+    <a href="#" id="logout-btn" onclick="logout()" style="display:none;">🚪 ログアウト</a>
+    <div id="user-info" style="margin: 10px 0; font-size: 14px;"></div>
     <a href="index.html">🏠 トップ</a>
     <a href="mypage.html">📄 マイページ</a>
     <a href="edit.html">✏️ プロフィール編集</a>
-    <a href="#" id="logout">🚪 ログアウト</a>
   </div>
+
   <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <!-- ヘッダー -->
   <div class="header">
     <span class="menu-toggle" onclick="toggleSidebar()">≡</span>
     スマジョイ｜マイページ
   </div>
+
+  <!-- メイン表示エリア -->
   <div class="main-content" onclick="closeSidebar()">
     <div class="content-box">
       <div id="profile-display">読み込み中...</div>
@@ -114,12 +123,11 @@
     </div>
   </div>
 
+  <!-- サイドバーボタンの動作 -->
   <script>
     function toggleSidebar() {
-      const sidebar = document.getElementById('sidebar');
-      const overlay = document.getElementById('overlay');
-      sidebar.classList.toggle('active');
-      overlay.classList.toggle('active');
+      document.getElementById('sidebar').classList.toggle('active');
+      document.getElementById('overlay').classList.toggle('active');
     }
 
     function closeSidebar() {
@@ -127,11 +135,18 @@
       document.getElementById('overlay').classList.remove('active');
     }
   </script>
-  
+
+  <!-- Firebase & ログイン処理 -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
     import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+    import {
+      getAuth,
+      onAuthStateChanged,
+      signOut,
+      signInWithPopup,
+      GoogleAuthProvider
+    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDMVAb0htcBm2Yv3uKpJ7Kmqyvhmr21b9o",
@@ -145,34 +160,53 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
 
-    function toggleSidebar() {
-      document.getElementById('sidebar').classList.toggle('active');
-      document.getElementById('overlay').classList.toggle('active');
-    }
+    // ログイン処理
+    window.loginWithGoogle = async () => {
+      try {
+        const result = await signInWithPopup(auth, provider);
+        alert(`ようこそ、${result.user.displayName} さん！`);
+      } catch (error) {
+        alert("ログインに失敗しました。");
+        console.error(error);
+      }
+    };
 
-    function closeSidebar() {
-      document.getElementById('sidebar').classList.remove('active');
-      document.getElementById('overlay').classList.remove('active');
-    }
+    // ログアウト処理
+    window.logout = () => {
+      signOut(auth).then(() => {
+        alert("ログアウトしました");
+      });
+    };
 
-    document.getElementById("logout").onclick = () => signOut(auth);
-
+    // ログイン状態監視＋マイページ表示
     onAuthStateChanged(auth, async (user) => {
-      if (!user) return location.href = "index.html";
-      const ref = doc(db, "users", user.uid);
-      const snap = await getDoc(ref);
-      if (snap.exists()) {
-        const data = snap.data();
-        document.getElementById("profile-display").innerHTML = `
-          <p><strong>プレイヤーネーム：</strong>${data.name || "未設定"}</p>
-          <p><strong>スピリッツ使用キャラ：</strong>${data.spiritsCharacter || "未設定"}</p>
-          <p><strong>amiibo使用キャラ：</strong>${data.amiiboCharacter || "未設定"}</p>
-          <p><strong>コメント：</strong>${data.comment || ""}</p>
-          <p><img src="${data.icon || ''}" style="width:80px; border-radius: 50%;"></p>
-        `;
+      const loginBtn = document.getElementById("login-btn");
+      const logoutBtn = document.getElementById("logout-btn");
+      const userInfo = document.getElementById("user-info");
+
+      if (user) {
+        loginBtn.style.display = "none";
+        logoutBtn.style.display = "block";
+        userInfo.innerHTML = `<img src="${user.photoURL}" style="width:24px; border-radius:50%;"> ${user.displayName}`;
+
+        const ref = doc(db, "users", user.uid);
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          const data = snap.data();
+          document.getElementById("profile-display").innerHTML = `
+            <p><strong>プレイヤーネーム：</strong>${data.name || "未設定"}</p>
+            <p><strong>スピリッツ使用キャラ：</strong>${data.spiritsCharacter || "未設定"}</p>
+            <p><strong>amiibo使用キャラ：</strong>${data.amiiboCharacter || "未設定"}</p>
+            <p><strong>コメント：</strong>${data.comment || ""}</p>
+            <p><img src="${data.icon || ''}" style="width:80px; border-radius: 50%;"></p>
+          `;
+        } else {
+          document.getElementById("profile-display").textContent = "プロフィールが未登録です。";
+        }
       } else {
-        document.getElementById("profile-display").textContent = "プロフィールが未登録です。";
+        location.href = "index.html";
       }
     });
   </script>
