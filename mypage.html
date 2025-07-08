@@ -182,33 +182,30 @@
 
     // ログイン状態監視＋マイページ表示
     onAuthStateChanged(auth, async (user) => {
-      const loginBtn = document.getElementById("login-btn");
-      const logoutBtn = document.getElementById("logout-btn");
-      const userInfo = document.getElementById("user-info");
-
-      if (user) {
-        loginBtn.style.display = "none";
-        logoutBtn.style.display = "block";
-        userInfo.innerHTML = `<img src="${user.photoURL}" style="width:24px; border-radius:50%;"> ${user.displayName}`;
-
-        const ref = doc(db, "users", user.uid);
-        const snap = await getDoc(ref);
-        if (snap.exists()) {
-          const data = snap.data();
-          document.getElementById("profile-display").innerHTML = `
-            <p><strong>プレイヤーネーム：</strong>${data.name || "未設定"}</p>
-            <p><strong>スピリッツ使用キャラ：</strong>${data.spiritsCharacter || "未設定"}</p>
-            <p><strong>amiibo使用キャラ：</strong>${data.amiiboCharacter || "未設定"}</p>
-            <p><strong>コメント：</strong>${data.comment || "未設定"}</p>
-            <p><img src="${data.icon || ''}" style="width:80px; border-radius: 50%;"></p>
-          `;
-        } else {
-          document.getElementById("profile-display").textContent = "プロフィールが未登録です。";
-        }
-      } else {
-        location.href = "index.html";
-      }
-    });
+    const loginBtn = document.getElementById("login-btn");
+    const logoutBtn = document.getElementById("logout-btn");
+    const userInfo = document.getElementById("user-info");
+  
+    if (user) {
+      loginBtn.style.display = "none";
+      logoutBtn.style.display = "block";
+      userInfo.innerHTML = `<img src="${user.photoURL}" style="width:24px; border-radius:50%;"> ${user.displayName}`;
+  
+      const ref = doc(db, "users", user.uid);
+      const snap = await getDoc(ref);
+      let data = snap.exists() ? snap.data() : {};
+  
+      document.getElementById("profile-display").innerHTML = `
+        <p><strong>プレイヤーネーム：</strong>${data.name || user.displayName || "未設定"}</p>
+        <p><strong>スピリッツ使用キャラ：</strong>${data.spiritsCharacter || "未設定"}</p>
+        <p><strong>amiibo使用キャラ：</strong>${data.amiiboCharacter || "未設定"}</p>
+        <p><strong>コメント：</strong>${data.comment || "未設定"}</p>
+        <p><img src="${data.icon || user.photoURL || ''}" style="width:80px; border-radius: 50%;"></p>
+      `;
+    } else {
+      location.href = "index.html";
+    }
+  });
   </script>
 </body>
 </html>
