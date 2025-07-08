@@ -126,7 +126,7 @@
         <input type="text" id="name" />
 
         <label>アイコン画像</label>
-        <input type="text" id="icon" />
+        <input type="file" id="icon-upload" accept="image/*" />
 
         <label>スピリッツ使用キャラ</label>
         <input type="text" id="spiritsCharacter" />
@@ -155,7 +155,7 @@
     }
   </script>
 
-  <!-- Firebase & 認証＆保存処理 -->
+  <!-- Firebase連携 -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
     import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
@@ -166,6 +166,12 @@
       signInWithPopup,
       GoogleAuthProvider
     } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+    import {
+      getStorage,
+      ref as storageRef,
+      uploadBytes,
+      getDownloadURL
+    } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDMVAb0htcBm2Yv3uKpJ7Kmqyvhmr21b9o",
@@ -180,6 +186,7 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
+    const storage = getStorage(app);
 
     // ログイン処理
     window.loginWithGoogle = async () => {
@@ -192,14 +199,14 @@
       }
     };
 
-    // ログアウト処理
+    // ログアウト
     window.logout = () => {
       signOut(auth).then(() => {
         alert("ログアウトしました");
       });
     };
 
-    // ログイン状態監視＋フォーム操作
+    // 状態監視＋フォーム表示・保存
     onAuthStateChanged(auth, async (user) => {
       const loginBtn = document.getElementById("login-btn");
       const logoutBtn = document.getElementById("logout-btn");
@@ -218,18 +225,29 @@
           document.getElementById("spiritsCharacter").value = data.spiritsCharacter || "";
           document.getElementById("amiiboCharacter").value = data.amiiboCharacter || "";
           document.getElementById("comment").value = data.comment || "";
-          document.getElementById("icon").value = data.icon || "";
         }
 
         document.getElementById("edit-form").addEventListener("submit", async (e) => {
           e.preventDefault();
+          const file = document.getElementById("iconFile").files[0];
+
+          let iconURL = "";
+          if (file) {
+            const iconRef = storageRef(storage, `user_icons/${user.uid}`);
+            await uploadBytes(iconRef, file);
+            iconURL = await getDownloadURL(iconRef);
+          } else {
+            iconURL = snap.exists() ? (snap.data().icon || "") : "";
+          }
+
           const updateData = {
             name: document.getElementById("name").value,
             spiritsCharacter: document.getElementById("spiritsCharacter").value,
             amiiboCharacter: document.getElementById("amiiboCharacter").value,
             comment: document.getElementById("comment").value,
-            icon: document.getElementById("icon").value,
+            icon: iconURL
           };
+
           await setDoc(ref, updateData);
           alert("保存しました！");
           location.href = "mypage.html";
