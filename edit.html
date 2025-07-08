@@ -1,48 +1,164 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>編集｜スマジョイ</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <title>プロフィール編集｜スマジョイ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    body { background: #111; color: #eee; font-family: sans-serif; margin: 0; padding: 20px; }
-    .container { max-width: 600px; margin: 80px auto; background: #1a1a1a; padding: 20px; border-radius: 8px; border: 1px solid #333; }
-    h1 { text-align: center; color: #fff; }
-    .form-group { margin-bottom: 15px; }
-    label { display: block; margin-bottom: 5px; }
-    input, textarea { width: 100%; padding: 8px; background: #222; border: 1px solid #444; color: #eee; border-radius: 4px; }
-    button { background: #444; color: #fff; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      background: #111;
+      color: #eee;
+    }
+
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: #222;
+      padding: 15px 20px;
+      font-size: 18px;
+      font-weight: bold;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid #333;
+    }
+
+    .menu-toggle {
+      font-size: 24px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: -200px;
+      width: 200px;
+      height: 100%;
+      background: #1c1c1c;
+      padding: 20px;
+      box-sizing: border-box;
+      transition: left 0.3s ease;
+      z-index: 101;
+    }
+
+    .sidebar.active {
+      left: 0;
+    }
+
+    .overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+    }
+
+    .overlay.active {
+      display: block;
+    }
+
+    .sidebar a {
+      display: block;
+      color: #fff;
+      text-decoration: none;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+
+    .main-content {
+      padding: 90px 20px 40px 20px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    form p {
+      margin-bottom: 15px;
+    }
+
+    input[type="text"],
+    textarea {
+      width: 100%;
+      padding: 8px;
+      background: #222;
+      border: 1px solid #444;
+      color: #eee;
+      border-radius: 4px;
+    }
+
+    textarea {
+      resize: vertical;
+    }
+
+    button {
+      background: #444;
+      color: #eee;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #666;
+    }
   </style>
 </head>
 <body>
-  <div class="container">
+
+  <div class="sidebar" id="sidebar">
+    <a href="index.html">🏠 TOP</a>
+    <a href="mypage.html">📄 マイページ</a>
+    <a href="#">📄 レート対戦</a>
+    <a href="#">📜 ルール確認</a>
+    <a href="#">📄 サイトについて</a>
+  </div>
+
+  <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <div class="header">
+    <span class="menu-toggle" onclick="toggleSidebar()">≡</span>
+    スマジョイ
+  </div>
+
+  <div class="main-content" onclick="closeSidebar()">
     <h1>プロフィール編集</h1>
     <form id="profile-form">
-      <div class="form-group">
-        <label>表示名：</label>
-        <input type="text" id="displayName" />
-      </div>
-      <div class="form-group">
-        <label>アイコンURL：</label>
-        <input type="text" id="iconUrl" />
-      </div>
-      <div class="form-group">
-        <label>スピリッツ使用キャラURL：</label>
-        <input type="text" id="spiritsChar" />
-      </div>
-      <div class="form-group">
-        <label>amiibo使用キャラURL：</label>
-        <input type="text" id="amiiboChar" />
-      </div>
-      <div class="form-group">
-        <label>一言コメント：</label>
-        <textarea id="comment"></textarea>
-      </div>
-      <div style="text-align:center;">
-        <button type="submit">保存</button>
-      </div>
+      <p>表示名：<input type="text" id="displayName" /></p>
+      <p>アイコンURL：<input type="text" id="iconUrl" /></p>
+      <p>スピリッツ使用キャラ：<input type="text" id="spiritsChar" /></p>
+      <p>amiibo使用キャラ：<input type="text" id="amiiboChar" /></p>
+      <p>一言コメント：<textarea id="comment"></textarea></p>
+      <button type="submit">保存</button>
     </form>
   </div>
+
+  <script>
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('overlay');
+      sidebar.classList.toggle('active');
+      overlay.classList.toggle('active');
+    }
+
+    function closeSidebar() {
+      document.getElementById('sidebar').classList.remove('active');
+      document.getElementById('overlay').classList.remove('active');
+    }
+  </script>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
@@ -98,5 +214,6 @@
       };
     });
   </script>
+
 </body>
 </html>
