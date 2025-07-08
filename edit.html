@@ -70,22 +70,23 @@
       padding: 90px 20px 40px 20px;
     }
     .content-box {
-      background: #1a1a1a;
-      padding: 20px;
-      border-radius: 5px;
-      border: 1px solid #333;
-      max-width: 600px;
-      margin: 0 auto;
-    }
-    input, textarea {
-      width: 100%;
-      padding: 8px;
-      margin-top: 4px;
-      margin-bottom: 16px;
-      background: #222;
-      border: 1px solid #444;
-      color: #eee;
-    }
+    background: #1a1a1a;
+    padding: 20px;
+    border-radius: 5px;
+    border: 1px solid #333;
+    max-width: 600px;
+    margin: 0 auto;
+    text-align: center; /* ← 入力エリア全体を中央揃え */
+  }
+  input, textarea {
+    width: 80%; /* ← 横幅を少し短くして中央に寄せやすく */
+    margin: 10px auto; /* ← 上下マージン + 中央配置 */
+    display: block;    /* ← ブロック要素で中央揃え可能に */
+    padding: 8px;
+    background: #222;
+    border: 1px solid #444;
+    color: #eee;
+  }
     button {
       background: #444;
       color: #eee;
