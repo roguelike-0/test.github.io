@@ -189,7 +189,7 @@
     if (user) {
       loginBtn.style.display = "none";
       logoutBtn.style.display = "block";
-      userInfo.innerHTML = `<img src="${user.photoURL}" style="width:24px; border-radius:25%;"> ${user.displayName}`;
+      userInfo.innerHTML = `<img src="${user.photoURL}"> ${user.displayName}`;
   
       const ref = doc(db, "users", user.uid);
       const snap = await getDoc(ref);
