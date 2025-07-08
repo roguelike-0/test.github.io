@@ -146,12 +146,14 @@
 <body>
 
   <div class="sidebar" id="sidebar">
-    <a href="#">👤 Googleログイン</a>
-    <a href="#">📄 マイページ</a>
-    <a href="#">📄 レート対戦</a>
-    <a href="#">📜 ルール確認</a>
-    <a href="#">📄 サイトについて</a>
-  </div>
+  <a href="#" id="login-btn" onclick="loginWithGoogle()">👤 Googleログイン</a>
+  <a href="#" id="logout-btn" onclick="logout()" style="display:none;">🚪 ログアウト</a>
+  <div id="user-info" style="margin: 10px 0; font-size: 14px;"></div>
+  <a href="#">📄 マイページ</a>
+  <a href="#">📄 レート対戦</a>
+  <a href="#">📜 ルール確認</a>
+  <a href="#">📄 サイトについて</a>
+</div>
 
   <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 
@@ -178,16 +180,14 @@
       <div class="ranking-table">
         <h2>スピリッツルール</h2>
         <table>
-          <tr><td>1</td><td><img class="icon" src="icon1.png"></td><td>今朝未明</td><td><img class="icon" src="dedede.png"></td><td>1788</td></tr>
-          <tr><td>2</td><td><img class="icon" src="icon2.png"></td><td>おもち星人</td><td><img class="icon" src="ness.png"></td><td>1760</td></tr>
+          <tbody id="spirits-ranking"></tbody>
         </table>
       </div>
 
       <div class="ranking-table">
         <h2>amiiboルール</h2>
         <table>
-          <tr><td>1</td><td><img class="icon" src="icon3.png"></td><td>デデ子の主</td><td><img class="icon" src="dedede.png"></td><td>1811</td></tr>
-          <tr><td>2</td><td><img class="icon" src="icon4.png"></td><td>ぬいぐる魔</td><td><img class="icon" src="yoshi.png"></td><td>1750</td></tr>
+          <tbody id="amiibo-ranking"></tbody>
         </table>
       </div>
     </div>
@@ -209,3 +209,82 @@
 
 </body>
 </html>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+  import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+  import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDMVAb0htcBm2Yv3uKpJ7Kmqyvhmr21b9o",
+    authDomain: "smajoy-8e047.firebaseapp.com",
+    projectId: "smajoy-8e047",
+    storageBucket: "smajoy-8e047.appspot.com",
+    messagingSenderId: "878614139782",
+    appId: "1:878614139782:web:a168073265950c74d71207",
+    measurementId: "G-9RJ4R5YYT9"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
+
+  // ランキング表示処理
+  async function renderRanking(id, path) {
+    const tableBody = document.getElementById(id);
+    const snapshot = await getDocs(collection(db, ...path));
+    let data = [];
+    snapshot.forEach((doc) => data.push(doc.data()));
+    data.sort((a, b) => b.rate - a.rate);
+    tableBody.innerHTML = data.map((player, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td><img class="icon" src="${player.icon}" /></td>
+        <td>${player.name}</td>
+        <td><img class="icon" src="${player.character}" /></td>
+        <td>${player.rate}</td>
+      </tr>
+    `).join("");
+  }
+
+  renderRanking("spirits-ranking", ["rankings", "spirits", "players"]);
+  renderRanking("amiibo-ranking", ["rankings", "amiibo", "players"]);
+
+  // ログイン処理
+  window.loginWithGoogle = async () => {
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      alert(`ようこそ、${user.displayName} さん！`);
+    } catch (error) {
+      alert("ログインに失敗しました。");
+      console.error(error);
+    }
+  };
+
+  // ログアウト処理
+  window.logout = () => {
+    signOut(auth).then(() => {
+      alert("ログアウトしました");
+    });
+  };
+
+  // ログイン状態の監視
+  onAuthStateChanged(auth, (user) => {
+    const loginBtn = document.getElementById("login-btn");
+    const logoutBtn = document.getElementById("logout-btn");
+    const userInfo = document.getElementById("user-info");
+
+    if (user) {
+      loginBtn.style.display = "none";
+      logoutBtn.style.display = "block";
+      userInfo.innerHTML = `<img src="${user.photoURL}" style="width:24px; border-radius:50%;"> ${user.displayName}`;
+    } else {
+      loginBtn.style.display = "block";
+      logoutBtn.style.display = "none";
+      userInfo.innerHTML = "";
+    }
+  });
+</script>
+
