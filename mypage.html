@@ -184,7 +184,7 @@
     onAuthStateChanged(auth, async (user) => {
     const loginBtn = document.getElementById("login-btn");
     const logoutBtn = document.getElementById("logout-btn");
-    const userInfo = document.getElementById("user-info");
+    const userInfo = document.getElementById("user-info").innerHTML = `<img src="${user.photoURL}" style="width:24px; border-radius:50%;"> ${user.displayName}`;;
   
     if (user) {
       loginBtn.style.display = "none";
@@ -196,6 +196,7 @@
       let data = snap.exists() ? snap.data() : {};
   
       document.getElementById("profile-display").innerHTML = `
+      
 　      <p><img src="${data.icon || user.photoURL || ''}"></p>
         <p><strong>プレイヤーネーム：</strong>${data.name || user.displayName || "未設定"}</p>
         <p><strong>スピリッツ使用キャラ：</strong>${data.spiritsCharacter || "未設定"}</p>
