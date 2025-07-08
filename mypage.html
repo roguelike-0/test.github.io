@@ -1,52 +1,123 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>マイページ｜スマジョイ</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    body { background: #111; color: #eee; font-family: sans-serif; margin: 0; padding: 20px; }
-    .container { max-width: 600px; margin: 80px auto; background: #1a1a1a; padding: 20px; border-radius: 8px; border: 1px solid #333; }
-    h1 { text-align: center; color: #fff; }
-    .row { margin-bottom: 15px; }
-    .label { font-weight: bold; display: block; margin-bottom: 5px; }
-    img.icon { width: 48px; height: 48px; border-radius: 50%; }
-    img.char { width: 28px; }
-    .button { background: #444; color: #fff; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      background: #111;
+      color: #eee;
+    }
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: #222;
+      padding: 15px 20px;
+      font-size: 18px;
+      font-weight: bold;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid #333;
+    }
+    .menu-toggle {
+      font-size: 24px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: -200px;
+      width: 200px;
+      height: 100%;
+      background: #1c1c1c;
+      padding: 20px;
+      box-sizing: border-box;
+      transition: left 0.3s ease;
+      z-index: 101;
+    }
+    .sidebar.active {
+      left: 0;
+    }
+    .overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+    }
+    .overlay.active {
+      display: block;
+    }
+    .sidebar a {
+      display: block;
+      color: #fff;
+      text-decoration: none;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+    .main-content {
+      padding: 90px 20px 40px 20px;
+    }
+    .content-box {
+      background: #1a1a1a;
+      padding: 20px;
+      border-radius: 5px;
+      border: 1px solid #333;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      margin-top: 4px;
+      margin-bottom: 16px;
+      background: #222;
+      border: 1px solid #444;
+      color: #eee;
+    }
+    button {
+      background: #444;
+      color: #eee;
+      border: none;
+      padding: 10px 20px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>マイページ</h1>
-    <div class="row">
-      <span class="label">表示名：</span>
-      <span id="displayName"></span>
-    </div>
-    <div class="row">
-      <span class="label">アイコン：</span>
-      <img id="iconImg" class="icon" />
-    </div>
-    <div class="row">
-      <span class="label">スピリッツ使用キャラ：</span>
-      <img id="spiritsImg" class="char" />
-    </div>
-    <div class="row">
-      <span class="label">amiibo使用キャラ：</span>
-      <img id="amiiboImg" class="char" />
-    </div>
-    <div class="row">
-      <span class="label">一言コメント：</span>
-      <span id="comment"></span>
-    </div>
-    <div style="text-align:center;">
-      <button class="button" onclick="location.href='edit.html'">編集する</button>
+  <div class="sidebar" id="sidebar">
+    <a href="index.html">🏠 トップ</a>
+    <a href="mypage.html">📄 マイページ</a>
+    <a href="edit.html">✏️ プロフィール編集</a>
+    <a href="#" id="logout">🚪 ログアウト</a>
+  </div>
+  <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+  <div class="header">
+    <span class="menu-toggle" onclick="toggleSidebar()">≡</span>
+    スマジョイ
+  </div>
+  <div class="main-content" onclick="closeSidebar()">
+    <div class="content-box">
+      <h1>マイページ</h1>
+      <div id="profile-display">読み込み中...</div>
+      <p><a href="edit.html"><button>プロフィール編集</button></a></p>
     </div>
   </div>
-
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
     import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDMVAb0htcBm2Yv3uKpJ7Kmqyvhmr21b9o",
@@ -54,13 +125,24 @@
       projectId: "smajoy-8e047",
       storageBucket: "smajoy-8e047.appspot.com",
       messagingSenderId: "878614139782",
-      appId: "1:878614139782:web:a168073265950c74d71207",
-      measurementId: "G-9RJ4R5YYT9"
+      appId: "1:878614139782:web:a168073265950c74d71207"
     };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
+
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('active');
+      document.getElementById('overlay').classList.toggle('active');
+    }
+
+    function closeSidebar() {
+      document.getElementById('sidebar').classList.remove('active');
+      document.getElementById('overlay').classList.remove('active');
+    }
+
+    document.getElementById("logout").onclick = () => signOut(auth);
 
     onAuthStateChanged(auth, async (user) => {
       if (!user) return location.href = "index.html";
@@ -68,11 +150,15 @@
       const snap = await getDoc(ref);
       if (snap.exists()) {
         const data = snap.data();
-        document.getElementById("displayName").textContent = data.name || "";
-        document.getElementById("iconImg").src = data.icon || "";
-        document.getElementById("spiritsImg").src = data.spiritsCharacter || "";
-        document.getElementById("amiiboImg").src = data.amiiboCharacter || "";
-        document.getElementById("comment").textContent = data.comment || "";
+        document.getElementById("profile-display").innerHTML = `
+          <p><strong>表示名：</strong>${data.name || "未設定"}</p>
+          <p><strong>スピリッツ使用キャラ：</strong>${data.spiritsCharacter || "未設定"}</p>
+          <p><strong>amiibo使用キャラ：</strong>${data.amiiboCharacter || "未設定"}</p>
+          <p><strong>コメント：</strong>${data.comment || ""}</p>
+          <p><img src="${data.icon || ''}" style="width:80px; border-radius: 50%;"></p>
+        `;
+      } else {
+        document.getElementById("profile-display").textContent = "プロフィールが未登録です。";
       }
     });
   </script>
