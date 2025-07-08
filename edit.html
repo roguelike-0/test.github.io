@@ -228,18 +228,23 @@
         }
 
         document.getElementById("edit-form").addEventListener("submit", async (e) => {
-          e.preventDefault();
-          const file = document.getElementById("icon-upload").files[0];
-
-          let iconURL = "";
+        e.preventDefault();
+      
+        const fileInput = document.getElementById("icon-upload");
+        const file = fileInput?.files?.[0];
+      
+        let iconURL = "";
+      
+        try {
           if (file) {
             const iconRef = storageRef(storage, `user_icons/${user.uid}`);
             await uploadBytes(iconRef, file);
             iconURL = await getDownloadURL(iconRef);
           } else {
-            iconURL = snap.exists() ? (snap.data().icon || "") : "";
+            const snapNow = await getDoc(doc(db, "users", user.uid));
+            iconURL = snapNow.exists() ? (snapNow.data().icon || "") : "";
           }
-
+      
           const updateData = {
             name: document.getElementById("name").value,
             spiritsCharacter: document.getElementById("spiritsCharacter").value,
@@ -247,14 +252,16 @@
             comment: document.getElementById("comment").value,
             icon: iconURL
           };
-
-          await setDoc(ref, updateData);
+      
+          await setDoc(doc(db, "users", user.uid), updateData);
           alert("保存しました！");
           location.href = "mypage.html";
-        });
-      } else {
-        location.href = "index.html";
-      }
+      
+        } catch (err) {
+          console.error("保存時エラー:", err);
+          alert("保存に失敗しました");
+        }
+                
     });
   </script>
 </body>
