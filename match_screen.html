@@ -2,8 +2,8 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>レート対戦</title>
+  <meta charset="UTF-8" />
+  <title>レート戦マッチング</title>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
@@ -22,46 +22,14 @@
       font-size: 16px;
       cursor: pointer;
       border-radius: 5px;
-      margin: 10px;
-    }
-    input {
-      padding: 6px;
-      font-size: 16px;
-    }
-    #commentArea {
       margin-top: 20px;
-    }
-    .status-box {
-      border: 1px solid #888;
-      padding: 10px;
-      margin-top: 10px;
     }
   </style>
 </head>
 <body>
-  <h1 id="match-title">ホストが部屋番号を入力中…</h1>
-
-  <div class="status-box">
-    <p>あなた: <span id="myName"></span>（レート: <span id="myRate"></span>）</p>
-    <p>相手: <span id="opponentName"></span>（レート: <span id="opponentRate"></span>）</p>
-    <p id="roomDisplay">部屋番号: <span id="roomNumber">未設定</span></p>
-  </div>
-
-  <div id="roomInputArea" style="display:none;">
-    <input id="roomInput" placeholder="部屋番号を入力" />
-    <button onclick="confirmRoom()">設定</button>
-  </div>
-
-  <div>
-    <button onclick="submitResult('win')">勝ち</button>
-    <button onclick="submitResult('lose')">負け</button>
-  </div>
-
-  <div id="commentArea">
-    <textarea id="commentInput" rows="2" cols="40" placeholder="コメントを入力..."></textarea><br>
-    <button onclick="sendComment()">送信</button>
-    <div id="commentBox" style="margin-top:10px; text-align:left;"></div>
-  </div>
+  <h1>レート戦マッチング</h1>
+  <p id="status">対戦相手を探しています...</p>
+  <button onclick="cancelMatch()">キャンセル</button>
 
   <script>
     const firebaseConfig = {
@@ -78,114 +46,100 @@
     const auth = firebase.auth();
 
     let uid = "";
-    let opponentUid = localStorage.getItem("opponentUid");
+    let intervalId = null;
     const matchRef = db.collection("matching");
 
     auth.onAuthStateChanged(async (user) => {
-      if (!user) return alert("ログインしてください");
-      uid = user.uid;
-
-      const myDoc = await db.collection("users").doc(uid).get();
-      const opDoc = await db.collection("users").doc(opponentUid).get();
-
-      document.getElementById("myName").textContent = myDoc.data().name || "不明";
-      document.getElementById("myRate").textContent = myDoc.data().rate ?? "??";
-      document.getElementById("opponentName").textContent = opDoc.data().name || "不明";
-      document.getElementById("opponentRate").textContent = opDoc.data().rate ?? "??";
-
-      const snapshot = await matchRef.doc(uid).get();
-      const isHost = snapshot.data().timestamp < (await matchRef.doc(opponentUid).get()).data().timestamp;
-
-      if (isHost) {
-        document.getElementById("roomInputArea").style.display = "block";
+      if (user) {
+        uid = user.uid;
+        await startMatching(uid);
+      } else {
+        alert("ログインしてください");
+        window.location.href = "index.html";
       }
-
-      matchRef.doc(uid).onSnapshot(doc => {
-        const data = doc.data();
-        if (data.room) {
-          document.getElementById("roomNumber").textContent = data.room;
-          document.getElementById("match-title").textContent = "対戦中";
-        }
-      });
-
-      matchRef.doc(opponentUid).onSnapshot(doc => {
-        const data = doc.data();
-        if (data.room) {
-          document.getElementById("roomNumber").textContent = data.room;
-          document.getElementById("match-title").textContent = "対戦中";
-        }
-      });
-
-      matchRef.doc("comments_" + uid).onSnapshot(doc => {
-        const data = doc.data();
-        if (data && data.text) {
-          const box = document.getElementById("commentBox");
-          box.innerHTML += `<p><strong>相手:</strong> ${data.text}</p>`;
-        }
-      });
     });
 
-    async function confirmRoom() {
-      const room = document.getElementById("roomInput").value;
-      if (!room) return alert("部屋番号を入力してください");
-      if (!confirm(`${room} でよろしいですか？`)) return;
-      await matchRef.doc(uid).update({ room });
-      await matchRef.doc(opponentUid).update({ room });
+    async function startMatching(uid) {
+      const now = Date.now();
+      await matchRef.doc(uid).set({
+        uid,
+        status: "waiting",
+        timestamp: now,
+        opponent: "",
+      });
+
+      intervalId = setInterval(async () => {
+        const snapshot = await matchRef.orderBy("timestamp").get();
+        const others = snapshot.docs.filter(doc => doc.id !== uid && doc.data().status === "waiting");
+
+        if (others.length > 0) {
+          const opponentDoc = others[0];
+          const opponentUid = opponentDoc.id;
+
+          if (opponentUid === uid) return;
+
+          const selfSnap = await matchRef.doc(uid).get();
+          const selfData = selfSnap.data();
+          if (selfData.status === "matched") return;
+
+          const roomRef = db.collection("rooms").doc();
+          const now = Date.now();
+
+          await db.runTransaction(async (transaction) => {
+            const opponentSnapshot = await transaction.get(matchRef.doc(opponentUid));
+            const selfSnapshot = await transaction.get(matchRef.doc(uid));
+
+            const opponentData = opponentSnapshot.data();
+            const selfData = selfSnapshot.data();
+
+            if (
+              opponentData.status !== "waiting" ||
+              selfData.status !== "waiting"
+            ) return;
+
+            transaction.set(roomRef, {
+              createdAt: now,
+              player1: opponentUid,
+              player2: uid,
+              state: "matched",
+              roomId: roomRef.id
+            });
+
+            transaction.update(matchRef.doc(opponentUid), {
+              status: "matched",
+              roomId: roomRef.id,
+            });
+
+            transaction.update(matchRef.doc(uid), {
+              status: "matched",
+              roomId: roomRef.id,
+            });
+          });
+
+          clearInterval(intervalId);
+          localStorage.setItem("roomId", roomRef.id);
+          window.location.href = "match_screen.html";
+        } else {
+          const selfSnap = await matchRef.doc(uid).get();
+          const selfData = selfSnap.data();
+          if (selfData && selfData.status === "matched") {
+            clearInterval(intervalId);
+            localStorage.setItem("roomId", selfData.roomId);
+            window.location.href = "match_screen.html";
+          }
+        }
+      }, 2000);
+
+      setTimeout(() => {
+        cancelMatch("マッチング時間切れです");
+      }, 10 * 60 * 1000);
     }
 
-    async function submitResult(result) {
-      await matchRef.doc(uid).update({ result });
-
-      const self = (await matchRef.doc(uid).get()).data();
-      const opp = (await matchRef.doc(opponentUid).get()).data();
-
-      if (!self.result || !opp.result) return;
-
-      if ((self.result === "win" && opp.result === "lose") ||
-          (self.result === "lose" && opp.result === "win")) {
-        const myUserRef = db.collection("users").doc(uid);
-        const opUserRef = db.collection("users").doc(opponentUid);
-        const myUser = (await myUserRef.get()).data();
-        const opUser = (await opUserRef.get()).data();
-
-        const myOld = myUser.rate ?? 1500;
-        const opOld = opUser.rate ?? 1500;
-
-        const expectedA = 1 / (1 + Math.pow(10, (opOld - myOld) / 400));
-        const expectedB = 1 / (1 + Math.pow(10, (myOld - opOld) / 400));
-
-        const scoreA = self.result === "win" ? 1 : 0;
-        const scoreB = opp.result === "win" ? 1 : 0;
-
-        const k = 32;
-        const newMyRate = Math.round(myOld + k * (scoreA - expectedA));
-        const newOpRate = Math.round(opOld + k * (scoreB - expectedB));
-
-        await myUserRef.update({ rate: newMyRate });
-        await opUserRef.update({ rate: newOpRate });
-
-        const rankRef = db.doc(`rankings/amiibo/players/${uid}`);
-        const opRankRef = db.doc(`rankings/amiibo/players/${opponentUid}`);
-        await rankRef.set({ name: myUser.name, rate: newMyRate, icon: myUser.icon, character: myUser.amiiboCharacter });
-        await opRankRef.set({ name: opUser.name, rate: newOpRate, icon: opUser.icon, character: opUser.amiiboCharacter });
-
-        alert("対戦が終了しました！");
-        window.location.href = "index.html";
-      } else {
-        alert("勝ち／負けの判定に矛盾があります。再入力してください。");
-        await matchRef.doc(uid).update({ result: firebase.firestore.FieldValue.delete() });
-        await matchRef.doc(opponentUid).update({ result: firebase.firestore.FieldValue.delete() });
-      }
-    }
-
-    async function sendComment() {
-      const text = document.getElementById("commentInput").value.trim();
-      if (!text) return;
-      const docRef = matchRef.doc("comments_" + opponentUid);
-      await docRef.set({ text });
-      const box = document.getElementById("commentBox");
-      box.innerHTML += `<p><strong>自分:</strong> ${text}</p>`;
-      document.getElementById("commentInput").value = "";
+    async function cancelMatch(msg = "マッチングをキャンセルしました") {
+      clearInterval(intervalId);
+      await matchRef.doc(uid).delete();
+      alert(msg);
+      window.location.href = "index.html";
     }
   </script>
 </body>
