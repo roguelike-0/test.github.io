@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -64,28 +63,29 @@
       const roomRef = db.collection("matching_rooms");
 
       const doc = await waitingRef.get();
-      if (!doc.exists || !doc.data().uid) {
+      if (!doc.exists || !doc.data().uid || doc.data().uid === uid) {
         await waitingRef.set({ uid });
         const unsubscribeWaiting = waitingRef.onSnapshot(async (snapshot) => {
           const data = snapshot.data();
           if (data.uid !== uid) {
-            // matched by someone else
             const newRoom = await findRoom(uid);
             if (newRoom) {
               unsubscribeWaiting();
+              localStorage.setItem("roomId", newRoom);
               window.location.href = "match_screen.html";
             }
           }
         });
       } else {
         const opponentUid = doc.data().uid;
-        roomId = uid + "_" + opponentUid + "_" + Date.now();
+        roomId = `${opponentUid}_${uid}_${Date.now()}`;
         await roomRef.doc(roomId).set({
           player1: opponentUid,
           player2: uid,
           createdAt: Date.now()
         });
         await waitingRef.delete();
+        localStorage.setItem("roomId", roomId);
         window.location.href = "match_screen.html";
       }
     }
@@ -103,7 +103,10 @@
 
     async function cancelMatch(msg = "マッチングをキャンセルしました") {
       if (unsubscribe) unsubscribe();
-      await db.collection("waiting_users").doc("singleton").delete();
+      const current = await db.collection("waiting_users").doc("singleton").get();
+      if (current.exists && current.data().uid === uid) {
+        await db.collection("waiting_users").doc("singleton").delete();
+      }
       alert(msg);
       window.location.href = "index.html";
     }
