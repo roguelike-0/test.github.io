@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -27,7 +28,7 @@
 </head>
 <body>
   <h1>レート戦マッチング</h1>
-  <p>対戦相手を探しています...</p>
+  <p id="status">対戦相手を探しています...</p>
   <button onclick="cancelMatch()">キャンセル</button>
 
   <script>
@@ -45,37 +46,49 @@
 
     const uid = "demo_user_" + Math.floor(Math.random() * 10000);
     const matchRef = db.collection("matching");
+    let intervalId = null;
 
     async function startMatching() {
       const now = Date.now();
-      await matchRef.doc(uid).set({ uid, timestamp: now });
+      await matchRef.doc(uid).set({
+        uid,
+        timestamp: now,
+        status: "waiting",
+        opponent: ""
+      });
 
-      const interval = setInterval(async () => {
+      intervalId = setInterval(async () => {
         const snapshot = await matchRef.get();
-        const users = [];
-        snapshot.forEach(doc => {
-          if (doc.id !== uid) {
-            users.push(doc.data());
-          }
-        });
+        for (const doc of snapshot.docs) {
+          const data = doc.data();
+          if (data.uid !== uid && data.status === "waiting") {
+            // マッチング成立
+            await matchRef.doc(uid).update({
+              status: "matched",
+              opponent: data.uid
+            });
+            await matchRef.doc(data.uid).update({
+              status: "matched",
+              opponent: uid
+            });
 
-        if (users.length > 0) {
-          alert("対戦相手が見つかりました！");
-          clearInterval(interval);
-          window.location.href = "match_screen.html";
+            clearInterval(intervalId);
+            window.location.href = "match_screen.html";
+            return;
+          }
         }
       }, 3000);
 
       setTimeout(() => {
-        clearInterval(interval);
-        alert("マッチング時間切れです");
-        cancelMatch();
+        clearInterval(intervalId);
+        cancelMatch("マッチング時間切れです");
       }, 10 * 60 * 1000); // 10分
     }
 
-    async function cancelMatch() {
+    async function cancelMatch(msg = "マッチングをキャンセルしました") {
+      clearInterval(intervalId);
       await matchRef.doc(uid).delete();
-      alert("マッチングをキャンセルしました");
+      alert(msg);
     }
 
     startMatching();
