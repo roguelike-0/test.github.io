@@ -43,18 +43,33 @@
       await myRef.set({ uid: user.uid, timestamp: Date.now(), status: "waiting" });
 
       intervalId = setInterval(async () => {
-        const snapshot = await db.collection("matching").get();
-        for (const doc of snapshot.docs) {
-          const data = doc.data();
-          if (data.uid !== user.uid && data.status === "waiting") {
-            await myRef.update({ status: "matching", opponent: data.uid });
-            await db.collection("matching").doc(data.uid).update({ status: "matching", opponent: user.uid });
-            clearInterval(intervalId);
-            window.location.href = "match_screen.html";
-            return;
-          }
-        }
-      }, 2000);
+  const docSnap = await matchRef.doc(uid).get();
+  const myData = docSnap.data();
+
+  // 自分がmatched状態になったら対戦開始
+  if (myData.status === "matched" && myData.opponent) {
+    clearInterval(intervalId);
+    window.location.href = "match_screen.html?opponent=" + myData.opponent;
+  }
+
+  // マッチング相手を探す処理
+  const snapshot = await matchRef.get();
+  for (const doc of snapshot.docs) {
+    const data = doc.data();
+    if (data.uid !== uid && data.status === "waiting") {
+      await matchRef.doc(uid).update({
+        status: "matched",
+        opponent: data.uid
+      });
+      await matchRef.doc(data.uid).update({
+        status: "matched",
+        opponent: uid
+      });
+      break;
+    }
+  }
+}, 3000);
+
 
       setTimeout(() => {
         cancelMatch("マッチング時間切れです");
