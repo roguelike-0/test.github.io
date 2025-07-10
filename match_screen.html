@@ -1,112 +1,92 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>対戦画面</title>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-  <style>
-    body { background-color: #111; color: #fff; font-family: sans-serif; text-align: center; padding: 20px; }
-    .rate-box { display: flex; justify-content: space-around; margin-top: 40px; }
-    .user { border: 1px solid #555; padding: 20px; width: 40%; background: #222; border-radius: 10px; }
-    button { margin: 10px; padding: 10px 20px; font-size: 16px; }
-  </style>
 </head>
-<body>
-  <h1>対戦画面</h1>
-  <div class="rate-box">
-    <div class="user" id="user1-box">
-      <h2 id="user1-name">あなた</h2>
-      <p>レート: <span id="user1-rate">1500</span></p>
-    </div>
-    <div class="user" id="user2-box">
-      <h2 id="user2-name">相手</h2>
-      <p>レート: <span id="user2-rate">1500</span></p>
-    </div>
-  </div>
-
-  <div style="margin-top: 30px;">
-    <button onclick="submitResult('win')">勝ち</button>
-    <button onclick="submitResult('lose')">負け</button>
-  </div>
+<body style="background:#111;color:white;text-align:center;">
+  <h1>対戦中</h1>
+  <p id="info"></p>
+  <button onclick="submitResult('win')">勝ちました</button>
+  <button onclick="submitResult('lose')">負けました</button>
 
   <script>
-    const firebaseConfig = {
+    const config = {
       apiKey: "AIzaSyDMVAb0htcBm2Yv3uKpJ7Kmqyvhmr21b9o",
       authDomain: "smajoy-8e047.firebaseapp.com",
-      projectId: "smajoy-8e047",
-      storageBucket: "smajoy-8e047.appspot.com",
-      messagingSenderId: "878614139782",
-      appId: "1:878614139782:web:a168073265950c74d71207",
-      measurementId: "G-9RJ4R5YYT9"
+      projectId: "smajoy-8e047"
     };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
+    firebase.initializeApp(config);
     const db = firebase.firestore();
-
-    let currentUser = null;
-    let opponentId = null;
-    let userRate = 1500;
-    let opponentRate = 1500;
+    const auth = firebase.auth();
+    let uid, opponentId;
 
     auth.onAuthStateChanged(async user => {
-      if (user) {
-        currentUser = user;
-        const matchSnap = await db.collection("matching").doc(user.uid).get();
-        opponentId = matchSnap.data().opponent;
-
-        const userDoc = await db.collection("users").doc(user.uid).get();
-        const oppDoc = await db.collection("users").doc(opponentId).get();
-
-        userRate = userDoc.data().rate || 1500;
-        opponentRate = oppDoc.data().rate || 1500;
-
-        document.getElementById("user1-name").textContent = userDoc.data().name;
-        document.getElementById("user1-rate").textContent = userRate;
-        document.getElementById("user2-name").textContent = oppDoc.data().name;
-        document.getElementById("user2-rate").textContent = opponentRate;
+      if (!user) {
+        alert("ログインしてください");
+        location.href = "index.html";
+        return;
       }
+
+      uid = user.uid;
+      const matchDoc = await db.collection("matching").doc(uid).get();
+      if (!matchDoc.exists) {
+        alert("マッチング情報が見つかりません");
+        location.href = "index.html";
+        return;
+      }
+
+      opponentId = matchDoc.data().opponent;
+      const opponentDoc = await db.collection("users").doc(opponentId).get();
+      const myDoc = await db.collection("users").doc(uid).get();
+      document.getElementById("info").innerText =
+        `あなた(${myDoc.data().rate}) vs 相手(${opponentDoc.data().rate})`;
     });
 
     async function submitResult(result) {
-      if (!currentUser || !opponentId) return alert("ユーザー情報が取得できていません");
+      const resultRef = db.collection("match_result").doc(uid);
+      await resultRef.set({ uid, result });
 
-      const userDoc = await db.collection("users").doc(currentUser.uid).get();
-      const oppDoc = await db.collection("users").doc(opponentId).get();
+      const oppResultDoc = await db.collection("match_result").doc(opponentId).get();
+      if (!oppResultDoc.exists) {
+        alert("相手の結果を待っています...");
+        return;
+      }
 
-      const userRate = userDoc.data().rate || 1500;
-      const oppRate = oppDoc.data().rate || 1500;
+      const myResult = result;
+      const oppResult = oppResultDoc.data().result;
 
-      // レート変動計算（シンプルなElo方式）
-      const K = 40;
-      const expectedScore = 1 / (1 + Math.pow(10, (oppRate - userRate) / 400));
-      const score = result === "win" ? 1 : 0;
+      if ((myResult === "win" && oppResult === "lose") || (myResult === "lose" && oppResult === "win")) {
+        // 勝敗が一致してる場合、レート計算
+        const myDoc = await db.collection("users").doc(uid).get();
+        const oppDoc = await db.collection("users").doc(opponentId).get();
+        const myRate = myDoc.data().rate || 1500;
+        const oppRate = oppDoc.data().rate || 1500;
+        const resultFactor = myResult === "win" ? 1 : 0;
+        const expected = 1 / (1 + Math.pow(10, (oppRate - myRate) / 400));
+        const k = 32;
+        const newRate = Math.round(myRate + k * (resultFactor - expected));
 
-      const newUserRate = Math.round(userRate + K * (score - expectedScore));
-      const newOppRate = Math.round(oppRate + K * ((1 - score) - (1 - expectedScore)));
+        await db.collection("users").doc(uid).update({ rate: newRate });
+        await db.collection("match_result").doc(uid).delete();
+        await db.collection("match_result").doc(opponentId).delete();
 
-      await db.collection("users").doc(currentUser.uid).update({ rate: newUserRate });
-      await db.collection("users").doc(opponentId).update({ rate: newOppRate });
+        // ランキングに追加
+        await db.collection("rankings").doc("amiibo").collection("players").doc(uid).set({
+          name: myDoc.data().name || "NoName",
+          rate: newRate,
+          icon: myDoc.data().icon || "",
+          character: myDoc.data().amiiboCharacter || ""
+        });
 
-      // ランキングへ反映（スピリッツ or amiibo、ここでは amiibo）
-      await db.collection("rankings").doc("amiibo").collection("players").doc(currentUser.uid).set({
-        name: userDoc.data().name,
-        icon: userDoc.data().icon,
-        character: userDoc.data().amiiboCharacter,
-        rate: newUserRate
-      });
-
-      await db.collection("rankings").doc("amiibo").collection("players").doc(opponentId).set({
-        name: oppDoc.data().name,
-        icon: oppDoc.data().icon,
-        character: oppDoc.data().amiiboCharacter,
-        rate: newOppRate
-      });
-
-      alert("結果を保存しました！");
-      window.location.href = "index.html";
+        alert(`対戦終了！あなたの新レート: ${newRate}`);
+        location.href = "index.html";
+      } else {
+        alert("結果が一致しません。もう一度選択してください。");
+      }
     }
   </script>
 </body>
