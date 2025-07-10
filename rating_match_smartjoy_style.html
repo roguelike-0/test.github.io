@@ -1,24 +1,34 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>対戦画面</title>
+  <meta charset="UTF-8" />
+  <title>レート戦マッチング</title>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
   <style>
-    body { background: #111; color: #fff; font-family: sans-serif; text-align: center; padding: 20px; }
-    button { margin: 10px; padding: 10px 20px; font-size: 18px; border-radius: 8px; border: none; background: gold; cursor: pointer; }
+    body {
+      background-color: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    button {
+      background-color: gold;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 5px;
+      margin-top: 20px;
+    }
   </style>
 </head>
 <body>
-  <h1>対戦中</h1>
-  <p>あなた：<span id="my-name"></span>（レート：<span id="my-rate"></span>）</p>
-  <p>相手：<span id="opponent-name"></span>（レート：<span id="opponent-rate"></span>）</p>
-
-  <button onclick="submitResult('win')">勝ち</button>
-  <button onclick="submitResult('lose')">負け</button>
+  <h1>レート戦マッチング</h1>
+  <p id="status">対戦相手を探しています...</p>
+  <button onclick="cancelMatch()">キャンセル</button>
 
   <script>
     const firebaseConfig = {
@@ -31,82 +41,74 @@
       measurementId: "G-9RJ4R5YYT9"
     };
     firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
     const db = firebase.firestore();
+    const auth = firebase.auth();
 
-    let uid, opponentId;
-    let myResult = null;
-    let opponentResult = null;
+    let uid = "";
+    let intervalId = null;
+    const matchRef = db.collection("matching");
 
-    async function loadUserInfo() {
-      const user = auth.currentUser;
-      if (!user) return;
-
-      uid = user.uid;
-      opponentId = new URLSearchParams(window.location.search).get("opponent");
-
-      const mySnap = await db.collection("users").doc(uid).get();
-      const opSnap = await db.collection("users").doc(opponentId).get();
-
-      const myData = mySnap.data();
-      const opData = opSnap.data();
-
-      document.getElementById("my-name").innerText = myData.name;
-      document.getElementById("my-rate").innerText = myData.rate || 1500;
-      document.getElementById("opponent-name").innerText = opData.name;
-      document.getElementById("opponent-rate").innerText = opData.rate || 1500;
-    }
-
-    auth.onAuthStateChanged(user => {
-      if (user) loadUserInfo();
+    auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        uid = user.uid;
+        await startMatching(uid);
+      } else {
+        alert("ログインしてください");
+        window.location.href = "index.html";
+      }
     });
 
-    async function submitResult(result) {
-      myResult = result;
-      await db.collection("match_results").doc(uid).set({ uid, opponentId, result });
+    async function startMatching(uid) {
+      const now = Date.now();
+      await matchRef.doc(uid).set({
+        uid,
+        status: "waiting",
+        timestamp: now,
+        opponent: "",
+      });
 
-      const interval = setInterval(async () => {
-        const opponentSnap = await db.collection("match_results").doc(opponentId).get();
-        if (opponentSnap.exists) {
-          opponentResult = opponentSnap.data().result;
-          if ((myResult === "win" && opponentResult === "lose") ||
-              (myResult === "lose" && opponentResult === "win")) {
-            clearInterval(interval);
-            await updateRate();
-            alert("レート更新完了！TOPに戻ります");
-            location.href = "index.html";
-          } else if (myResult === opponentResult) {
-            clearInterval(interval);
-            alert("結果が一致しません。再選択してください。");
-            await db.collection("match_results").doc(uid).delete();
-            myResult = null;
+      intervalId = setInterval(async () => {
+        const snapshot = await matchRef.orderBy("timestamp").get();
+        const others = snapshot.docs.filter(doc => doc.id !== uid && doc.data().status === "waiting");
+
+        if (others.length > 0) {
+          const opponentDoc = others[0];
+          const opponentUid = opponentDoc.id;
+
+          // 再チェック: すでにmatching済みなら処理しない
+          const selfSnap = await matchRef.doc(uid).get();
+          const selfData = selfSnap.data();
+          if (selfData.status === "matched") return;
+
+          // 両者 matching 状態へ
+          await matchRef.doc(uid).update({ status: "matched", opponent: opponentUid });
+          await matchRef.doc(opponentUid).update({ status: "matched", opponent: uid });
+
+          clearInterval(intervalId);
+          localStorage.setItem("opponentUid", opponentUid);
+          window.location.href = "match_screen.html";
+        } else {
+          // 自身がすでにmatchedなら遷移
+          const selfSnap = await matchRef.doc(uid).get();
+          const selfData = selfSnap.data();
+          if (selfData && selfData.status === "matched") {
+            clearInterval(intervalId);
+            localStorage.setItem("opponentUid", selfData.opponent);
+            window.location.href = "match_screen.html";
           }
         }
-      }, 3000);
+      }, 2000);
+
+      setTimeout(() => {
+        cancelMatch("マッチング時間切れです");
+      }, 10 * 60 * 1000);
     }
 
-    async function updateRate() {
-      const myDoc = await db.collection("users").doc(uid).get();
-      const opDoc = await db.collection("users").doc(opponentId).get();
-
-      let myRate = myDoc.data().rate || 1500;
-      let opRate = opDoc.data().rate || 1500;
-
-      const k = 32;
-      const expectedMy = 1 / (1 + Math.pow(10, (opRate - myRate) / 400));
-      const expectedOp = 1 - expectedMy;
-
-      let myScore = myResult === "win" ? 1 : 0;
-      let opScore = opponentResult === "win" ? 1 : 0;
-
-      const newMyRate = Math.round(myRate + k * (myScore - expectedMy));
-      const newOpRate = Math.round(opRate + k * (opScore - expectedOp));
-
-      await db.collection("users").doc(uid).update({ rate: newMyRate });
-      await db.collection("users").doc(opponentId).update({ rate: newOpRate });
-
-      await db.collection("rankings").doc("amiibo").collection("players").doc(uid).set({ uid });
-      await db.collection("rankings").doc("amiibo").collection("players").doc(opponentId).set({ uid: opponentId });
+    async function cancelMatch(msg = "マッチングをキャンセルしました") {
+      clearInterval(intervalId);
+      await matchRef.doc(uid).delete();
+      alert(msg);
+      window.location.href = "index.html";
     }
   </script>
 </body>
