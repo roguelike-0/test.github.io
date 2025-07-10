@@ -1,69 +1,156 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>対戦画面</title>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <style>
+    body {
+      background: #111;
+      color: #fff;
+      font-family: sans-serif;
+      padding: 20px;
+      text-align: center;
+    }
+    input, button {
+      font-size: 16px;
+      padding: 8px;
+      margin: 5px;
+    }
+    #roomDisplay {
+      margin-top: 20px;
+    }
+  </style>
 </head>
 <body>
-  <h1 id="title">対戦準備中...</h1>
-  <div id="hostArea" style="display:none;">
-    <input type="text" id="roomCode" placeholder="部屋番号を入力">
-    <button onclick="submitRoomCode()">設定</button>
+  <h1 id="status">対戦準備中...</h1>
+  <div id="roomSection" style="display:none;">
+    <p id="roomText">部屋番号を入力してください：</p>
+    <input type="text" id="roomInput">
+    <button onclick="confirmRoom()">設定</button>
   </div>
-  <div id="guestArea" style="display:none;">
-    <p id="roomDisplay">ホストが部屋番号を入力中...</p>
+  <p id="roomDisplay"></p>
+
+  <div id="commentSection">
+    <textarea id="commentInput" placeholder="コメント..." rows="2" cols="30"></textarea><br>
+    <button onclick="sendComment()">送信</button>
+    <p id="commentOutput"></p>
   </div>
+
+  <div>
+    <button onclick="submitResult('win')">勝ち</button>
+    <button onclick="submitResult('lose')">負け</button>
+  </div>
+
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyDMVAb0htcBm2Yv3uKpJ7Kmqyvhmr21b9o",
       authDomain: "smajoy-8e047.firebaseapp.com",
       projectId: "smajoy-8e047",
-      storageBucket: "smajoy-8e047.appspot.com",
-      messagingSenderId: "878614139782",
-      appId: "1:878614139782:web:a168073265950c74d71207"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
+
     let uid = "";
+    let roomId = localStorage.getItem("roomId");
+    let isPlayer1 = false;
+    let opponentId = "";
+    let playerField = ""; // "player1" or "player2"
 
     auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        uid = user.uid;
-        const roomId = localStorage.getItem("roomId");
-        const roomRef = db.collection("matching_rooms").doc(roomId);
-        const doc = await roomRef.get();
-        const data = doc.data();
-        const isHost = (uid === data.player1);
-        document.getElementById("title").innerText = "対戦中";
-        if (isHost) {
-          document.getElementById("hostArea").style.display = "block";
-        } else {
-          document.getElementById("guestArea").style.display = "block";
-          roomRef.onSnapshot((snap) => {
-            const val = snap.data();
-            if (val.roomCode) {
-              document.getElementById("roomDisplay").innerText = "部屋番号: " + val.roomCode;
-            }
-          });
-        }
-      } else {
+      if (!user) {
         alert("ログインしてください");
         window.location.href = "index.html";
+        return;
       }
+      uid = user.uid;
+
+      const roomDoc = await db.collection("matching_rooms").doc(roomId).get();
+      if (!roomDoc.exists) {
+        alert("部屋が見つかりません");
+        return;
+      }
+
+      const data = roomDoc.data();
+      if (data.player1 === uid) {
+        isPlayer1 = true;
+        opponentId = data.player2;
+        playerField = "player1";
+        document.getElementById("status").innerText = "あなたがホストです";
+        document.getElementById("roomSection").style.display = "block";
+      } else {
+        opponentId = data.player1;
+        playerField = "player2";
+        document.getElementById("status").innerText = "部屋番号を待っています...";
+      }
+
+      // コメントリアルタイム更新
+      db.collection("matching_rooms").doc(roomId)
+        .onSnapshot((doc) => {
+          const d = doc.data();
+          if (d.roomCode) {
+            document.getElementById("roomDisplay").innerText = "部屋番号: " + d.roomCode;
+            document.getElementById("status").innerText = "対戦中";
+          }
+          if (d.comment) {
+            document.getElementById("commentOutput").innerText = d.comment;
+          }
+          if (d.results?.player1 && d.results?.player2) {
+            handleResults(d.results);
+          }
+        });
     });
 
-    async function submitRoomCode() {
-      const code = document.getElementById("roomCode").value;
-      const roomId = localStorage.getItem("roomId");
+    function confirmRoom() {
+      const code = document.getElementById("roomInput").value.trim();
       if (!code) return alert("部屋番号を入力してください");
-      const confirmSubmit = confirm(`部屋番号「${code}」でよろしいですか？`);
-      if (!confirmSubmit) return;
-      await db.collection("matching_rooms").doc(roomId).update({ roomCode: code });
+      if (!confirm(`部屋番号「${code}」でよろしいですか？`)) return;
+      db.collection("matching_rooms").doc(roomId).update({ roomCode: code });
+    }
+
+    function sendComment() {
+      const text = document.getElementById("commentInput").value;
+      db.collection("matching_rooms").doc(roomId).update({ comment: text });
+    }
+
+    function submitResult(result) {
+      const field = `results.${playerField}`;
+      db.collection("matching_rooms").doc(roomId).update({ [field]: result });
+    }
+
+    async function handleResults(results) {
+      if (results.player1 === results.player2) {
+        alert("勝敗が一致しません。再入力してください。");
+        await db.collection("matching_rooms").doc(roomId).update({
+          results: firebase.firestore.FieldValue.delete()
+        });
+        return;
+      }
+
+      let delta = 0;
+      const userDoc = await db.collection("users").doc(uid).get();
+      const userData = userDoc.data();
+      let rate = userData?.rate || 1500;
+
+      if ((playerField === "player1" && results.player1 === "win") ||
+          (playerField === "player2" && results.player2 === "win")) {
+        delta = 20;
+      } else {
+        delta = -20;
+      }
+
+      await db.collection("users").doc(uid).update({ rate: rate + delta });
+
+      // 勝敗登録した人をランキング対象に
+      await db.collection("ranking").doc("amiibo").set({
+        player: firebase.firestore.FieldValue.arrayUnion(uid)
+      }, { merge: true });
+
+      alert("対戦が終了しました");
+      window.location.href = "index.html";
     }
   </script>
 </body>
