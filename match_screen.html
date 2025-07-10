@@ -10,34 +10,35 @@
   <style>
     body {
       background-color: #111;
-      color: white;
-      font-family: sans-serif;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      text-align: center;
       padding: 20px;
     }
     .player-box {
-      border: 2px solid #007bff;
-      border-radius: 6px;
-      margin: 20px;
+      border: 1px solid #444;
       padding: 10px;
-      background-color: #222;
+      margin: 10px;
+      background: #222;
     }
-    .label {
-      font-weight: bold;
-      color: gold;
+    button {
+      background-color: gold;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 5px;
+      margin: 10px;
     }
   </style>
 </head>
 <body>
-  <h1>マッチング成功！</h1>
-  <div class="player-box" id="player1">
-    <div class="label">プレイヤー1</div>
-    <div>ユーザー名: <span id="name1"></span></div>
-    <div>レート: <span id="rate1"></span></div>
-  </div>
-  <div class="player-box" id="player2">
-    <div class="label">プレイヤー2</div>
-    <div>ユーザー名: <span id="name2"></span></div>
-    <div>レート: <span id="rate2"></span></div>
+  <h1>対戦画面</h1>
+  <div id="player-info" class="player-box">自分: <span id="player-name"></span>（レート: <span id="player-rate"></span>）</div>
+  <div id="opponent-info" class="player-box">相手: <span id="opponent-name"></span>（レート: <span id="opponent-rate"></span>）</div>
+  <div>
+    <button onclick="reportResult('win')">勝ちました</button>
+    <button onclick="reportResult('lose')">負けました</button>
   </div>
 
   <script>
@@ -54,23 +55,44 @@
     const db = firebase.firestore();
     const auth = firebase.auth();
 
-    auth.onAuthStateChanged(async (user) => {
-      if (!user) return;
+    let currentUser, opponentId;
+    let currentRate, opponentRate;
 
-      const uid = user.uid;
-      const matchDoc = await db.collection("matching").doc(uid).get();
-      const matchData = matchDoc.data();
-      const opponentUid = matchData.opponent;
+    auth.onAuthStateChanged(async user => {
+      if (user) {
+        currentUser = user;
+        const matchDoc = await db.collection("matching").doc(currentUser.uid).get();
+        opponentId = matchDoc.data().opponent;
 
-      const userDoc = await db.collection("users").doc(uid).get();
-      const oppoDoc = await db.collection("users").doc(opponentUid).get();
+        const currentUserData = (await db.collection("users").doc(currentUser.uid).get()).data();
+        const opponentData = (await db.collection("users").doc(opponentId).get()).data();
 
-      document.getElementById("name1").textContent = userDoc.data().name || "不明";
-      document.getElementById("rate1").textContent = userDoc.data().rate || 1500;
+        currentRate = currentUserData.rate || 1500;
+        opponentRate = opponentData.rate || 1500;
 
-      document.getElementById("name2").textContent = oppoDoc.data().name || "不明";
-      document.getElementById("rate2").textContent = oppoDoc.data().rate || 1500;
+        document.getElementById("player-name").innerText = currentUserData.name;
+        document.getElementById("player-rate").innerText = currentRate;
+        document.getElementById("opponent-name").innerText = opponentData.name;
+        document.getElementById("opponent-rate").innerText = opponentRate;
+      }
     });
+
+    async function reportResult(result) {
+      if (!currentUser || !opponentId) return;
+
+      let newRate = currentRate;
+      let delta = Math.round(Math.abs(currentRate - opponentRate) * 0.05 + 10);
+
+      if (result === "win") {
+        newRate += delta;
+      } else if (result === "lose") {
+        newRate -= delta;
+      }
+
+      await db.collection("users").doc(currentUser.uid).update({ rate: newRate });
+      alert(`対戦結果を保存しました（新しいレート: ${newRate}）`);
+      window.location.href = "index.html";
+    }
   </script>
 </body>
 </html>
