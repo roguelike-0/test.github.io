@@ -252,31 +252,29 @@
   renderRanking("amiibo-ranking", ["rankings", "amiibo", "players"]);
 
   // Googleログイン処理（初回登録付き）
-window.loginWithGoogle = async () => {
-  try {
-    const result = await signInWithPopup(auth, provider);
-    const user = result.user;
+  window.loginWithGoogle = async () => {
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
 
-    const userRef = doc(db, "users", user.uid);
-    const snap = await getDoc(userRef);
-    if (!snap.exists()) {
-      await setDoc(userRef, {
-        name: user.displayName || "名無しのスマブラー",
-        icon: user.photoURL || "",
-        spiritsCharacter: "",
-        amiiboCharacter: "",
-        comment: "",
-        rate: 1500  // ← ここを追加
-      });
+      const userRef = doc(db, "users", user.uid);
+      const snap = await getDoc(userRef);
+      if (!snap.exists()) {
+        await setDoc(userRef, {
+          name: user.displayName || "名無しのスマブラー",
+          icon: user.photoURL || "",
+          spiritsCharacter: "",
+          amiiboCharacter: "",
+          comment: ""
+        });
+      }
+
+      alert(`ようこそ、${user.displayName} さん！`);
+    } catch (error) {
+      alert("ログインに失敗しました。");
+      console.error(error);
     }
-
-    alert(`ようこそ、${user.displayName} さん！`);
-  } catch (error) {
-    alert("ログインに失敗しました。");
-    console.error(error);
-  }
-};
-
+  };
 
   // ログアウト処理
   window.logout = () => {
