@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -8,22 +7,8 @@
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
   <style>
-    body {
-      background-color: #111;
-      color: #fff;
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 20px;
-    }
-    button {
-      background-color: gold;
-      border: none;
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-      border-radius: 5px;
-      margin-top: 20px;
-    }
+    body { background-color: #111; color: #fff; font-family: Arial; text-align: center; padding: 20px; }
+    button { background-color: gold; border: none; padding: 10px 20px; font-size: 16px; cursor: pointer; border-radius: 5px; margin-top: 20px; }
   </style>
 </head>
 <body>
@@ -38,77 +23,49 @@
       projectId: "smajoy-8e047",
       storageBucket: "smajoy-8e047.appspot.com",
       messagingSenderId: "878614139782",
-      appId: "1:878614139782:web:a168073265950c74d71207",
-      measurementId: "G-9RJ4R5YYT9"
+      appId: "1:878614139782:web:a168073265950c74d71207"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
-
-    let uid = "";
-    const matchRef = db.collection("matching");
-    const usersRef = db.collection("users");
+    let currentUser = null;
     let intervalId = null;
 
-    auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        uid = user.uid;
-
-        // 初回ログインなら初期レート1500で登録
-        const userDoc = await usersRef.doc(uid).get();
-        if (!userDoc.exists) {
-          await usersRef.doc(uid).set({
-            name: user.displayName || "名無し",
-            rate: 1500
-          });
-        }
-        startMatching();
-      } else {
+    auth.onAuthStateChanged(async user => {
+      if (!user) {
         alert("ログインしてください");
         window.location.href = "index.html";
+        return;
       }
-    });
 
-    async function startMatching() {
-      const now = Date.now();
-      await matchRef.doc(uid).set({
-        uid,
-        timestamp: now,
-        status: "waiting",
-        opponent: ""
-      });
+      currentUser = user;
+      const myRef = db.collection("matching").doc(user.uid);
+      await myRef.set({ uid: user.uid, timestamp: Date.now(), status: "waiting" });
 
       intervalId = setInterval(async () => {
-        const snapshot = await matchRef.get();
+        const snapshot = await db.collection("matching").get();
         for (const doc of snapshot.docs) {
           const data = doc.data();
-          if (data.uid !== uid && data.status === "waiting") {
-            // マッチング成立
-            await matchRef.doc(uid).update({
-              status: "matched",
-              opponent: data.uid
-            });
-            await matchRef.doc(data.uid).update({
-              status: "matched",
-              opponent: uid
-            });
-
+          if (data.uid !== user.uid && data.status === "waiting") {
+            await myRef.update({ status: "matching", opponent: data.uid });
+            await db.collection("matching").doc(data.uid).update({ status: "matching", opponent: user.uid });
             clearInterval(intervalId);
             window.location.href = "match_screen.html";
             return;
           }
         }
-      }, 3000);
+      }, 2000);
 
       setTimeout(() => {
-        clearInterval(intervalId);
         cancelMatch("マッチング時間切れです");
-      }, 10 * 60 * 1000); // 10分
-    }
+      }, 10 * 60 * 1000);
+    });
 
-    async function cancelMatch(msg = "マッチングをキャンセルしました") {
+    async function cancelMatch(msg = "キャンセルしました") {
+      if (currentUser) {
+        await db.collection("matching").doc(currentUser.uid).delete();
+      }
       clearInterval(intervalId);
-      await matchRef.doc(uid).delete();
       alert(msg);
       window.location.href = "index.html";
     }
