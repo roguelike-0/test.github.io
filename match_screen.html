@@ -160,22 +160,37 @@
         });
     });
 
-    async function updateRankings(winnerUid, loserUid) {
-      const rankingRef = db.collection("rankings").doc("amiibo");
-      const snap = await rankingRef.get();
-      const rankings = snap.exists ? snap.data() : {};
+    <script>
+  async function updateRankings(winnerUid, loserUid) {
+    const rankingsRef = db.collection("rankings").doc("amiibo").collection("players");
 
-      const winName = userNameMap[winnerUid] || "名無し";
-      const loseName = userNameMap[loserUid] || "名無し";
+    const winnerSnap = await rankingsRef.doc(winnerUid).get();
+    const loserSnap = await rankingsRef.doc(loserUid).get();
 
-      if (!rankings[winnerUid]) rankings[winnerUid] = { name: winName, rating: 1500 };
-      if (!rankings[loserUid]) rankings[loserUid] = { name: loseName, rating: 1500 };
+    const winnerName = userNameMap[winnerUid] || "名無し";
+    const loserName = userNameMap[loserUid] || "名無し";
 
-      rankings[winnerUid].rating += 20;
-      rankings[loserUid].rating -= 20;
+    let winnerData = winnerSnap.exists ? winnerSnap.data() : {
+      name: winnerName,
+      icon: "",
+      character: "",
+      rate: 1500
+    };
 
-      await rankingRef.set(rankings);
-    }
+    let loserData = loserSnap.exists ? loserSnap.data() : {
+      name: loserName,
+      icon: "",
+      character: "",
+      rate: 1500
+    };
+
+    winnerData.rate += 30;
+    loserData.rate -= 30;
+
+    await rankingsRef.doc(winnerUid).set(winnerData);
+    await rankingsRef.doc(loserUid).set(loserData);
+  }
+</script>
 
     async function submitRoomCode() {
       const code = document.getElementById("roomCode").value;
