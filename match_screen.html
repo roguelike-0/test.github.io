@@ -81,7 +81,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
-    let uid = "", roomId = "", isHost = false, userNameMap = {};
+    let uid = "", roomId = "", isHost = false, userNameMap = {}, player1Uid = "", player2Uid = "";
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) {
@@ -97,8 +97,8 @@
       const data = doc.data();
       isHost = (uid === data.player1);
 
-      const player1Uid = data.player1;
-      const player2Uid = data.player2;
+      player1Uid = data.player1;
+      player2Uid = data.player2;
 
       const users = await db.collection("users").get();
       users.forEach((doc) => {
@@ -126,13 +126,18 @@
         }
 
         if (val.results && Object.keys(val.results).length >= 2) {
-          const results = val.results;
-          const values = Object.values(results);
+          const r = val.results;
+          const values = Object.values(r);
+          const keys = Object.keys(r);
+
           if (values[0] === values[1]) {
             alert("勝敗の申告に矛盾があります。再度入力してください。");
             await roomRef.update({ results: {} });
             enableButtons();
           } else {
+            const winnerUid = values[0] === "win" ? keys[0] : keys[1];
+            const loserUid = winnerUid === keys[0] ? keys[1] : keys[0];
+            await updateRankings(winnerUid, loserUid);
             alert("勝敗が成立しました。部屋を閉じます。");
             await db.collection("matching_rooms").doc(roomId).delete();
             window.location.href = "index.html";
@@ -154,6 +159,23 @@
           });
         });
     });
+
+    async function updateRankings(winnerUid, loserUid) {
+      const rankingRef = db.collection("rankings").doc("amiibo");
+      const snap = await rankingRef.get();
+      const rankings = snap.exists ? snap.data() : {};
+
+      const winName = userNameMap[winnerUid] || "名無し";
+      const loseName = userNameMap[loserUid] || "名無し";
+
+      if (!rankings[winnerUid]) rankings[winnerUid] = { name: winName, rating: 1500 };
+      if (!rankings[loserUid]) rankings[loserUid] = { name: loseName, rating: 1500 };
+
+      rankings[winnerUid].rating += 20;
+      rankings[loserUid].rating -= 20;
+
+      await rankingRef.set(rankings);
+    }
 
     async function submitRoomCode() {
       const code = document.getElementById("roomCode").value;
@@ -191,7 +213,6 @@
       current[uid] = choice;
       await roomRef.update({ results: current });
 
-      // disable buttons
       winBtn.disabled = true;
       loseBtn.disabled = true;
       winBtn.classList.add("disabled");
