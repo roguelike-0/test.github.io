@@ -81,7 +81,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
-    let uid = "", roomId = "", isHost = false, userNameMap = {}, player1Uid = "", player2Uid = "";
+    let uid = "", roomId = "", isHost = false, userDataMap = {}, player1Uid = "", player2Uid = "";
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) {
@@ -102,11 +102,18 @@
 
       const users = await db.collection("users").get();
       users.forEach((doc) => {
-        userNameMap[doc.id] = doc.data().name || "名無し";
+        userDataMap[doc.id] = {
+          name: doc.data().name || "名無し",
+          icon: doc.data().icon || "",
+          character: doc.data().amiiboCharacter || "",
+          rate: doc.data().rate || 1500
+        };
       });
 
-      document.getElementById("player1Info").innerText = "Player1: " + userNameMap[player1Uid];
-      document.getElementById("player2Info").innerText = "Player2: " + userNameMap[player2Uid];
+      document.getElementById("player1Info").innerHTML =
+        `<strong>Player1:</strong> ${userDataMap[player1Uid]?.name}<br>レート: ${userDataMap[player1Uid]?.rate ?? '???'}`;
+      document.getElementById("player2Info").innerHTML =
+        `<strong>Player2:</strong> ${userDataMap[player2Uid]?.name}<br>レート: ${userDataMap[player2Uid]?.rate ?? '???'}`;
 
       if (isHost) {
         document.getElementById("hostArea").style.display = "block";
@@ -152,7 +159,7 @@
           messagesDiv.innerHTML = "";
           querySnapshot.forEach((doc) => {
             const data = doc.data();
-            const user = userNameMap[data.uid] || "名無し";
+            const user = userDataMap[data.uid]?.name || "名無し";
             const msg = document.createElement("p");
             msg.innerText = user + ": " + data.text;
             messagesDiv.appendChild(msg);
@@ -161,34 +168,34 @@
     });
 
     async function updateRankings(winnerUid, loserUid) {
-    const rankingsRef = db.collection("rankings").doc("amiibo").collection("players");
+      const rankingsRef = db.collection("rankings").doc("amiibo").collection("players");
 
-    const winnerSnap = await rankingsRef.doc(winnerUid).get();
-    const loserSnap = await rankingsRef.doc(loserUid).get();
+      const winnerSnap = await rankingsRef.doc(winnerUid).get();
+      const loserSnap = await rankingsRef.doc(loserUid).get();
 
-    const winnerName = userNameMap[winnerUid] || "名無し";
-    const loserName = userNameMap[loserUid] || "名無し";
+      const winnerUser = userDataMap[winnerUid] || {};
+      const loserUser = userDataMap[loserUid] || {};
 
-    let winnerData = winnerSnap.exists ? winnerSnap.data() : {
-      name: winnerName,
-      icon: "",
-      character: "",
-      rate: 1500
-    };
+      let winnerData = winnerSnap.exists ? winnerSnap.data() : {
+        name: winnerUser.name,
+        icon: winnerUser.icon,
+        character: winnerUser.character,
+        rate: winnerUser.rate
+      };
 
-    let loserData = loserSnap.exists ? loserSnap.data() : {
-      name: loserName,
-      icon: "",
-      character: "",
-      rate: 1500
-    };
+      let loserData = loserSnap.exists ? loserSnap.data() : {
+        name: loserUser.name,
+        icon: loserUser.icon,
+        character: loserUser.character,
+        rate: loserUser.rate
+      };
 
-    winnerData.rate += 30;
-    loserData.rate -= 30;
+      winnerData.rate += 30;
+      loserData.rate -= 30;
 
-    await rankingsRef.doc(winnerUid).set(winnerData);
-    await rankingsRef.doc(loserUid).set(loserData);
-  }
+      await rankingsRef.doc(winnerUid).set(winnerData);
+      await rankingsRef.doc(loserUid).set(loserData);
+    }
 
     async function submitRoomCode() {
       const code = document.getElementById("roomCode").value;
