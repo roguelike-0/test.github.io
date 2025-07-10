@@ -8,24 +8,29 @@
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
   <style>
-    body { background: #111; color: #fff; font-family: sans-serif; text-align: center; padding: 20px; }
-    input, button { margin: 5px; padding: 10px; font-size: 16px; }
-    .room-section { margin-top: 20px; }
+    body {
+      background-color: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    input, button {
+      margin-top: 10px;
+      padding: 10px;
+      font-size: 16px;
+    }
   </style>
 </head>
 <body>
-  <h1 id="statusTitle">対戦準備中...</h1>
-  <div class="room-section" id="roomSection" style="display:none;">
-    <div id="hostUI" style="display:none;">
-      <p>部屋番号を入力してください：</p>
-      <input id="roomInput" placeholder="例: 1234-ABCD" />
-      <button onclick="submitRoom()">設定</button>
-    </div>
-    <div id="guestUI" style="display:none;">
-      <p>ホストが部屋番号を入力中...</p>
-      <p id="displayRoomNumber"></p>
-    </div>
+  <h1 id="title">部屋番号を設定してください</h1>
+  <div id="playerInfo"></div>
+  <div id="roomSection">
+    <input type="text" id="roomInput" placeholder="部屋番号を入力" />
+    <button onclick="setRoomNumber()">設定</button>
   </div>
+  <p id="roomDisplay"></p>
+
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyDMVAb0htcBm2Yv3uKpJ7Kmqyvhmr21b9o",
@@ -33,7 +38,8 @@
       projectId: "smajoy-8e047",
       storageBucket: "smajoy-8e047.appspot.com",
       messagingSenderId: "878614139782",
-      appId: "1:878614139782:web:a168073265950c74d71207"
+      appId: "1:878614139782:web:a168073265950c74d71207",
+      measurementId: "G-9RJ4R5YYT9"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
@@ -43,51 +49,45 @@
     let roomId = localStorage.getItem("roomId");
 
     auth.onAuthStateChanged(async (user) => {
-      if (!user || !roomId) {
-        alert("ログインまたはマッチ情報がありません");
-        location.href = "index.html";
-        return;
-      }
-      uid = user.uid;
-      const roomDoc = await db.collection("matching_rooms").doc(roomId).get();
-      if (!roomDoc.exists) {
-        alert("対戦部屋が見つかりません");
-        location.href = "index.html";
-        return;
-      }
-      const data = roomDoc.data();
-      const isHost = data.player1 === uid;
-      document.getElementById("roomSection").style.display = "block";
-      if (isHost) {
-        document.getElementById("hostUI").style.display = "block";
-        document.getElementById("statusTitle").innerText = "あなたがホストです";
-      } else {
-        document.getElementById("guestUI").style.display = "block";
-        document.getElementById("statusTitle").innerText = "対戦待機中...";
-        db.collection("matching_rooms").doc(roomId).onSnapshot((snap) => {
-          const d = snap.data();
-          if (d.roomNumber) {
-            document.getElementById("displayRoomNumber").innerText = "部屋番号: " + d.roomNumber;
-            document.getElementById("statusTitle").innerText = "対戦中";
+      if (user) {
+        uid = user.uid;
+        const roomDoc = await db.collection("matching_rooms").doc(roomId).get();
+        const roomData = roomDoc.data();
+        if (!roomData) return;
+
+        const isHost = uid === roomData.player1;
+        const opponentId = isHost ? roomData.player2 : roomData.player1;
+        const title = document.getElementById("title");
+        const roomSection = document.getElementById("roomSection");
+        const roomDisplay = document.getElementById("roomDisplay");
+
+        title.innerText = isHost ? "部屋番号を設定してください" : "部屋番号を待っています...";
+
+        if (!isHost) {
+          roomSection.style.display = "none";
+        }
+
+        db.collection("matching_rooms").doc(roomId).onSnapshot((doc) => {
+          const data = doc.data();
+          if (data.roomNumber) {
+            roomDisplay.innerText = `部屋番号：${data.roomNumber}`;
+            title.innerText = "対戦中";
           }
         });
+      } else {
+        alert("ログインしてください");
+        window.location.href = "index.html";
       }
     });
 
-    async function submitRoom() {
-      const roomNumber = document.getElementById("roomInput").value.trim();
+    async function setRoomNumber() {
+      const roomInput = document.getElementById("roomInput");
+      const roomNumber = roomInput.value.trim();
       if (!roomNumber) return alert("部屋番号を入力してください");
-      const confirmed = confirm("部屋番号は「" + roomNumber + "」でよろしいですか？");
-      if (confirmed) {
-        await db.collection("matching_rooms").doc(roomId).update({
-          roomNumber: roomNumber
-        });
-        alert("部屋番号を設定しました");
-        document.getElementById("statusTitle").innerText = "対戦中";
-        document.getElementById("hostUI").style.display = "none";
-        document.getElementById("displayRoomNumber").innerText = "部屋番号: " + roomNumber;
-        document.getElementById("guestUI").style.display = "block";
-      }
+      if (!confirm(`部屋番号「${roomNumber}」でよろしいですか？`)) return;
+      await db.collection("matching_rooms").doc(roomId).update({
+        roomNumber: roomNumber
+      });
     }
   </script>
 </body>
