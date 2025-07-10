@@ -1,0 +1,93 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>対戦画面</title>
+  <style>
+    body {
+      background-color: #111;
+      color: #fff;
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    .section {
+      background-color: #222;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      padding: 20px;
+    }
+    .section h2 {
+      font-size: 20px;
+      color: #00aaff;
+      margin-bottom: 10px;
+    }
+    .form-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    input[type="text"] {
+      padding: 8px;
+      font-size: 16px;
+      width: 200px;
+    }
+    button {
+      padding: 8px 16px;
+      background: #00aaff;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .player-box {
+      background: #333;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+    .result-buttons button {
+      margin: 5px;
+      background: #ffaa00;
+      color: #000;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="section" id="room-section">
+    <h2>専用部屋に参加中です</h2>
+    <p style="color: #ff6666;">専用部屋を立てて、部屋IDとパスワード(1122)を入力してください。</p>
+    <div class="form-group">
+      <input type="text" placeholder="部屋IDを入力">
+      <button>部屋IDを設定</button>
+    </div>
+  </div>
+
+  <div class="section" id="players-section">
+    <div class="player-box">
+      <strong>プレイヤー1</strong><br>
+      プレイヤー: のちょう<br>
+      レート: 1484<br>
+      ステータス: 対戦相手募集中
+    </div>
+    <div class="player-box">
+      <strong>プレイヤー2</strong><br>
+      対戦相手を待っています…<br>
+      画面が切り替わるまでお待ちください。
+    </div>
+  </div>
+
+  <div class="section" id="result-section">
+    <h2>結果送信</h2>
+    <p>対戦が終了したら、下のボタンで結果を送信してください。</p>
+    <div class="result-buttons">
+      <button>勝ち</button>
+      <button>負け</button>
+      <button>対戦中止</button>
+    </div>
+  </div>
+
+</body>
+</html>
