@@ -6,30 +6,9 @@
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-  <style>
-    body {
-      background-color: #111;
-      color: #fff;
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 20px;
-    }
-    button {
-      background-color: gold;
-      border: none;
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-      border-radius: 5px;
-      margin-top: 20px;
-    }
-  </style>
 </head>
 <body>
-  <h1>レート戦マッチング</h1>
-  <p id="status">対戦相手を探しています...</p>
-  <button onclick="cancelMatch()">キャンセル</button>
-
+  <h1>マッチング中...</h1>
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyDMVAb0htcBm2Yv3uKpJ7Kmqyvhmr21b9o",
@@ -37,82 +16,54 @@
       projectId: "smajoy-8e047",
       storageBucket: "smajoy-8e047.appspot.com",
       messagingSenderId: "878614139782",
-      appId: "1:878614139782:web:a168073265950c74d71207",
-      measurementId: "G-9RJ4R5YYT9"
+      appId: "1:878614139782:web:a168073265950c74d71207"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
-
     let uid = "";
-    let unsubscribeWaiting = null;
 
     auth.onAuthStateChanged(async (user) => {
       if (user) {
         uid = user.uid;
-        await startMatching(uid);
+        const waitingRef = db.collection("waiting_users").doc("singleton");
+        const snapshot = await waitingRef.get();
+
+        if (!snapshot.exists || snapshot.data().uid === uid) {
+          // あなたがplayer1（先に来た人）
+          await waitingRef.set({ uid });
+
+          // matching_roomsを監視する
+          db.collection("matching_rooms")
+            .where("player1", "==", uid)
+            .onSnapshot((querySnapshot) => {
+              querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                if (data.player2) {
+                  localStorage.setItem("roomId", doc.id);
+                  waitingRef.delete(); // 自分がplayer1なら削除してOK
+                  window.location.href = "match_screen.html";
+                }
+              });
+            });
+        } else {
+          // あなたがplayer2（後から来た人）
+          const opponentUid = snapshot.data().uid;
+          const roomId = `${opponentUid}_${uid}_${Date.now()}`;
+          await db.collection("matching_rooms").doc(roomId).set({
+            player1: opponentUid,
+            player2: uid,
+            createdAt: Date.now()
+          });
+          await waitingRef.delete();
+          localStorage.setItem("roomId", roomId);
+          window.location.href = "match_screen.html";
+        }
       } else {
         alert("ログインしてください");
         window.location.href = "index.html";
       }
     });
-
-    async function startMatching(uid) {
-      const waitingRef = db.collection("waiting_users").doc("singleton");
-      const roomRef = db.collection("matching_rooms");
-
-      const doc = await waitingRef.get();
-      if (!doc.exists || !doc.data().uid || doc.data().uid === uid) {
-        // あなたが先に待っている側（player1）
-        await waitingRef.set({ uid });
-
-        unsubscribeWaiting = waitingRef.onSnapshot(async (snapshot) => {
-          const data = snapshot.data();
-          if (data.uid !== uid) {
-            // 誰か来た（player2）
-            const newRoomId = await findRoom(uid);
-            if (newRoomId) {
-              localStorage.setItem("roomId", newRoomId);
-              window.location.href = "match_screen.html";
-            }
-          }
-        });
-      } else {
-        // あなたが後に来た側（player2）
-        const opponentUid = doc.data().uid;
-        const roomId = `${opponentUid}_${uid}_${Date.now()}`;
-        await roomRef.doc(roomId).set({
-          player1: opponentUid,
-          player2: uid,
-          createdAt: Date.now()
-        });
-        await waitingRef.delete();
-
-        localStorage.setItem("roomId", roomId);
-        window.location.href = "match_screen.html";
-      }
-    }
-
-    async function findRoom(uid) {
-      const rooms = await db.collection("matching_rooms").get();
-      for (const doc of rooms.docs) {
-        const data = doc.data();
-        if (data.player1 === uid || data.player2 === uid) {
-          return doc.id;
-        }
-      }
-      return null;
-    }
-
-    async function cancelMatch(msg = "マッチングをキャンセルしました") {
-      if (unsubscribeWaiting) unsubscribeWaiting();
-      const current = await db.collection("waiting_users").doc("singleton").get();
-      if (current.exists && current.data().uid === uid) {
-        await db.collection("waiting_users").doc("singleton").delete();
-      }
-      alert(msg);
-      window.location.href = "index.html";
-    }
   </script>
 </body>
 </html>
