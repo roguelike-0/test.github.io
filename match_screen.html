@@ -6,70 +6,145 @@
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <style>
+    #players {
+      display: flex;
+      justify-content: space-between;
+      margin: 20px;
+    }
+    #players > div {
+      width: 45%;
+      background: #eee;
+      padding: 10px;
+      border-radius: 8px;
+    }
+    #chat {
+      margin-top: 30px;
+    }
+    #messages {
+      margin-top: 10px;
+      max-height: 150px;
+      overflow-y: auto;
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 8px;
+    }
+  </style>
 </head>
 <body>
   <h1 id="title">対戦準備中...</h1>
 
-  <div id="hostArea" style="display:none;">
-    <input type="text" id="roomCode" placeholder="部屋番号を入力">
-    <button onclick="submitRoomCode()">設定</button>
+  <div id="players">
+    <div id="player1Info">Player1: 読み込み中...</div>
+    <div id="player2Info">Player2: 読み込み中...</div>
   </div>
 
-  <div id="guestArea" style="display:none;">
-    <p id="roomDisplay">ホストが部屋番号を入力中...</p>
+  <div id="roomSection">
+    <div id="hostArea" style="display:none;">
+      <input type="text" id="roomCode" placeholder="部屋番号を入力">
+      <button onclick="submitRoomCode()">設定</button>
+    </div>
+    <div id="guestArea" style="display:none;">
+      <p>ホストが部屋番号を入力しています...</p>
+    </div>
+    <div id="roomDisplayArea" style="display:none;">
+      <p id="roomDisplay">部屋番号:</p>
+    </div>
+  </div>
+
+  <div id="chat">
+    <h3>コメント</h3>
+    <input type="text" id="chatInput" placeholder="コメントを入力">
+    <button onclick="submitComment()">書き込む</button>
+    <div id="messages"></div>
   </div>
 
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyDMVAb0htcBm2Yv3uKpJ7Kmqyvhmr21b9o",
       authDomain: "smajoy-8e047.firebaseapp.com",
-      projectId: "smajoy-8e047",
-      storageBucket: "smajoy-8e047.appspot.com",
-      messagingSenderId: "878614139782",
-      appId: "1:878614139782:web:a168073265950c74d71207"
+      projectId: "smajoy-8e047"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
-    let uid = "";
+    let uid = "", roomId = "", isHost = false, userNameMap = {};
 
     auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        uid = user.uid;
-        const roomId = localStorage.getItem("roomId");
-        const roomRef = db.collection("matching_rooms").doc(roomId);
-        const doc = await roomRef.get();
-        const data = doc.data();
-        const isHost = (uid === data.player1);
-
-        if (isHost) {
-          document.getElementById("hostArea").style.display = "block";
-        } else {
-          document.getElementById("guestArea").style.display = "block";
-        }
-
-        roomRef.onSnapshot((snap) => {
-          const val = snap.data();
-          if (val.roomCode) {
-            if (!isHost) {
-              document.getElementById("roomDisplay").innerText = "部屋番号: " + val.roomCode;
-            }
-            document.getElementById("title").innerText = "対戦開始";
-          }
-        });
-      } else {
+      if (!user) {
         alert("ログインしてください");
         window.location.href = "index.html";
+        return;
       }
+
+      uid = user.uid;
+      roomId = localStorage.getItem("roomId");
+      const roomRef = db.collection("matching_rooms").doc(roomId);
+      const doc = await roomRef.get();
+      const data = doc.data();
+      isHost = (uid === data.player1);
+
+      const player1Uid = data.player1;
+      const player2Uid = data.player2;
+
+      const users = await db.collection("users").get();
+      users.forEach((doc) => {
+        userNameMap[doc.id] = doc.data().name || "名無し";
+      });
+
+      document.getElementById("player1Info").innerText = "Player1: " + userNameMap[player1Uid];
+      document.getElementById("player2Info").innerText = "Player2: " + userNameMap[player2Uid];
+
+      if (isHost) {
+        document.getElementById("hostArea").style.display = "block";
+      } else {
+        document.getElementById("guestArea").style.display = "block";
+      }
+
+      roomRef.onSnapshot((snap) => {
+        const val = snap.data();
+        if (val.roomCode) {
+          document.getElementById("roomDisplay").innerText = "部屋番号: " + val.roomCode;
+          document.getElementById("roomDisplayArea").style.display = "block";
+          document.getElementById("hostArea").style.display = "none";
+          document.getElementById("guestArea").style.display = "none";
+          document.getElementById("title").innerText = "対戦開始";
+        }
+      });
+
+      // チャットの表示処理
+      db.collection("matching_rooms").doc(roomId).collection("comments")
+        .orderBy("timestamp")
+        .onSnapshot((querySnapshot) => {
+          const messagesDiv = document.getElementById("messages");
+          messagesDiv.innerHTML = "";
+          querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            const user = userNameMap[data.uid] || "名無し";
+            const msg = document.createElement("p");
+            msg.innerText = user + ": " + data.text;
+            messagesDiv.appendChild(msg);
+          });
+        });
     });
 
     async function submitRoomCode() {
       const code = document.getElementById("roomCode").value;
-      const roomId = localStorage.getItem("roomId");
       if (!code) return alert("部屋番号を入力してください");
       const confirmSubmit = confirm(`部屋番号「${code}」でよろしいですか？`);
       if (!confirmSubmit) return;
       await db.collection("matching_rooms").doc(roomId).update({ roomCode: code });
+    }
+
+    async function submitComment() {
+      const text = document.getElementById("chatInput").value;
+      if (!text) return;
+      await db.collection("matching_rooms").doc(roomId).collection("comments").add({
+        uid: uid,
+        text: text,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      document.getElementById("chatInput").value = "";
     }
   </script>
 </body>
