@@ -1,92 +1,85 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>レート戦マッチング</title>
+  <title>レート対戦マッチング</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
   <style>
-    body { background: #111; color: #fff; font-family: sans-serif; text-align: center; padding: 50px; }
+    body {
+      background-color: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
     button {
-      padding: 14px 28px;
       background-color: gold;
       border: none;
-      color: black;
-      font-size: 18px;
+      padding: 10px 20px;
+      font-size: 16px;
       cursor: pointer;
-      border-radius: 8px;
-      margin: 20px;
-    }
-    #status {
-      margin-top: 30px;
-      font-size: 20px;
-      color: lightgreen;
+      border-radius: 5px;
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
-  <h1>対戦相手を探す</h1>
-  <button onclick="startMatching()">対戦相手を探す</button>
-  <div id="status"></div>
+  <h1>レート戦マッチング</h1>
+  <p>対戦相手を探しています...</p>
+  <button onclick="cancelMatch()">キャンセル</button>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, query, where, getDocs, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
-
+  <script>
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_AUTH_DOMAIN",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_STORAGE_BUCKET",
-      messagingSenderId: "YOUR_MSG_ID",
-      appId: "YOUR_APP_ID"
+      apiKey: "AIzaSyDMVAb0htcBm2Yv3uKpJ7Kmqyvhmr21b9o",
+      authDomain: "smajoy-8e047.firebaseapp.com",
+      projectId: "smajoy-8e047",
+      storageBucket: "smajoy-8e047.appspot.com",
+      messagingSenderId: "878614139782",
+      appId: "1:878614139782:web:a168073265950c74d71207",
+      measurementId: "G-9RJ4R5YYT9"
     };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-
-    const uid = "mock-user-" + Math.floor(Math.random() * 10000); // 仮UID（テスト用）
-    const rate = 1500;
-    const range = 100;
+    const uid = "demo_user_" + Math.floor(Math.random() * 10000);
+    const matchRef = db.collection("matching");
 
     async function startMatching() {
-      const status = document.getElementById("status");
-      status.innerText = "マッチングモードに入りました。10分間探します…";
+      const now = Date.now();
+      await matchRef.doc(uid).set({ uid, timestamp: now });
 
-      const myEntry = await addDoc(collection(db, "matching"), {
-        uid: uid,
-        rate: rate,
-        range: range,
-        timestamp: Date.now()
-      });
-
-      const startTime = Date.now();
-      const timer = setInterval(async () => {
-        if (Date.now() - startTime > 10 * 60 * 1000) {
-          clearInterval(timer);
-          await deleteDoc(doc(db, "matching", myEntry.id));
-          status.innerText = "マッチング失敗：時間切れです。";
-          return;
-        }
-
-        const q = query(collection(db, "matching"));
-        const snapshot = await getDocs(q);
-        let matched = false;
-
-        snapshot.forEach(async (docSnap) => {
-          const data = docSnap.data();
-          if (data.uid !== uid && Math.abs(data.rate - rate) <= range) {
-            matched = true;
-            clearInterval(timer);
-            await deleteDoc(doc(db, "matching", myEntry.id));
-            await deleteDoc(doc(db, "matching", docSnap.id));
-            status.innerText = "マッチング成立！相手を見つけました。画面を移動します...";
-            setTimeout(() => {
-              window.location.href = "match_screen.html";
-            }, 2000);
+      const interval = setInterval(async () => {
+        const snapshot = await matchRef.get();
+        const users = [];
+        snapshot.forEach(doc => {
+          if (doc.id !== uid) {
+            users.push(doc.data());
           }
         });
 
+        if (users.length > 0) {
+          alert("対戦相手が見つかりました！");
+          clearInterval(interval);
+          window.location.href = "match_screen.html";
+        }
       }, 3000);
+
+      setTimeout(() => {
+        clearInterval(interval);
+        alert("マッチング時間切れです");
+        cancelMatch();
+      }, 10 * 60 * 1000); // 10分
     }
+
+    async function cancelMatch() {
+      await matchRef.doc(uid).delete();
+      alert("マッチングをキャンセルしました");
+    }
+
+    startMatching();
   </script>
 </body>
 </html>
