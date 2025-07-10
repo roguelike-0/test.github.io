@@ -3,22 +3,65 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>対戦画面</title>
+  <title>レート対戦</title>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
   <style>
-    body { background: #111; color: #fff; font-family: sans-serif; text-align: center; padding: 20px; }
-    button { margin: 10px; padding: 10px 20px; font-size: 18px; border-radius: 8px; border: none; background: gold; cursor: pointer; }
+    body {
+      background-color: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    button {
+      background-color: gold;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 5px;
+      margin: 10px;
+    }
+    input {
+      padding: 6px;
+      font-size: 16px;
+    }
+    #commentArea {
+      margin-top: 20px;
+    }
+    .status-box {
+      border: 1px solid #888;
+      padding: 10px;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
-  <h1>対戦中</h1>
-  <p>あなた：<span id="my-name"></span>（レート：<span id="my-rate"></span>）</p>
-  <p>相手：<span id="opponent-name"></span>（レート：<span id="opponent-rate"></span>）</p>
+  <h1 id="match-title">ホストが部屋番号を入力中…</h1>
 
-  <button onclick="submitResult('win')">勝ち</button>
-  <button onclick="submitResult('lose')">負け</button>
+  <div class="status-box">
+    <p>あなた: <span id="myName"></span>（レート: <span id="myRate"></span>）</p>
+    <p>相手: <span id="opponentName"></span>（レート: <span id="opponentRate"></span>）</p>
+    <p id="roomDisplay">部屋番号: <span id="roomNumber">未設定</span></p>
+  </div>
+
+  <div id="roomInputArea" style="display:none;">
+    <input id="roomInput" placeholder="部屋番号を入力" />
+    <button onclick="confirmRoom()">設定</button>
+  </div>
+
+  <div>
+    <button onclick="submitResult('win')">勝ち</button>
+    <button onclick="submitResult('lose')">負け</button>
+  </div>
+
+  <div id="commentArea">
+    <textarea id="commentInput" rows="2" cols="40" placeholder="コメントを入力..."></textarea><br>
+    <button onclick="sendComment()">送信</button>
+    <div id="commentBox" style="margin-top:10px; text-align:left;"></div>
+  </div>
 
   <script>
     const firebaseConfig = {
@@ -31,82 +74,118 @@
       measurementId: "G-9RJ4R5YYT9"
     };
     firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
     const db = firebase.firestore();
+    const auth = firebase.auth();
 
-    let uid, opponentId;
-    let myResult = null;
-    let opponentResult = null;
+    let uid = "";
+    let opponentUid = localStorage.getItem("opponentUid");
+    const matchRef = db.collection("matching");
 
-    async function loadUserInfo() {
-      const user = auth.currentUser;
-      if (!user) return;
-
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) return alert("ログインしてください");
       uid = user.uid;
-      opponentId = new URLSearchParams(window.location.search).get("opponent");
 
-      const mySnap = await db.collection("users").doc(uid).get();
-      const opSnap = await db.collection("users").doc(opponentId).get();
+      const myDoc = await db.collection("users").doc(uid).get();
+      const opDoc = await db.collection("users").doc(opponentUid).get();
 
-      const myData = mySnap.data();
-      const opData = opSnap.data();
+      document.getElementById("myName").textContent = myDoc.data().name || "不明";
+      document.getElementById("myRate").textContent = myDoc.data().rate ?? "??";
+      document.getElementById("opponentName").textContent = opDoc.data().name || "不明";
+      document.getElementById("opponentRate").textContent = opDoc.data().rate ?? "??";
 
-      document.getElementById("my-name").innerText = myData.name;
-      document.getElementById("my-rate").innerText = myData.rate || 1500;
-      document.getElementById("opponent-name").innerText = opData.name;
-      document.getElementById("opponent-rate").innerText = opData.rate || 1500;
-    }
+      const snapshot = await matchRef.doc(uid).get();
+      const isHost = snapshot.data().timestamp < (await matchRef.doc(opponentUid).get()).data().timestamp;
 
-    auth.onAuthStateChanged(user => {
-      if (user) loadUserInfo();
+      if (isHost) {
+        document.getElementById("roomInputArea").style.display = "block";
+      }
+
+      matchRef.doc(uid).onSnapshot(doc => {
+        const data = doc.data();
+        if (data.room) {
+          document.getElementById("roomNumber").textContent = data.room;
+          document.getElementById("match-title").textContent = "対戦中";
+        }
+      });
+
+      matchRef.doc(opponentUid).onSnapshot(doc => {
+        const data = doc.data();
+        if (data.room) {
+          document.getElementById("roomNumber").textContent = data.room;
+          document.getElementById("match-title").textContent = "対戦中";
+        }
+      });
+
+      matchRef.doc("comments_" + uid).onSnapshot(doc => {
+        const data = doc.data();
+        if (data && data.text) {
+          const box = document.getElementById("commentBox");
+          box.innerHTML += `<p><strong>相手:</strong> ${data.text}</p>`;
+        }
+      });
     });
 
-    async function submitResult(result) {
-      myResult = result;
-      await db.collection("match_results").doc(uid).set({ uid, opponentId, result });
-
-      const interval = setInterval(async () => {
-        const opponentSnap = await db.collection("match_results").doc(opponentId).get();
-        if (opponentSnap.exists) {
-          opponentResult = opponentSnap.data().result;
-          if ((myResult === "win" && opponentResult === "lose") ||
-              (myResult === "lose" && opponentResult === "win")) {
-            clearInterval(interval);
-            await updateRate();
-            alert("レート更新完了！TOPに戻ります");
-            location.href = "index.html";
-          } else if (myResult === opponentResult) {
-            clearInterval(interval);
-            alert("結果が一致しません。再選択してください。");
-            await db.collection("match_results").doc(uid).delete();
-            myResult = null;
-          }
-        }
-      }, 3000);
+    async function confirmRoom() {
+      const room = document.getElementById("roomInput").value;
+      if (!room) return alert("部屋番号を入力してください");
+      if (!confirm(`${room} でよろしいですか？`)) return;
+      await matchRef.doc(uid).update({ room });
+      await matchRef.doc(opponentUid).update({ room });
     }
 
-    async function updateRate() {
-      const myDoc = await db.collection("users").doc(uid).get();
-      const opDoc = await db.collection("users").doc(opponentId).get();
+    async function submitResult(result) {
+      await matchRef.doc(uid).update({ result });
 
-      let myRate = myDoc.data().rate || 1500;
-      let opRate = opDoc.data().rate || 1500;
+      const self = (await matchRef.doc(uid).get()).data();
+      const opp = (await matchRef.doc(opponentUid).get()).data();
 
-      const k = 32;
-      const expectedMy = 1 / (1 + Math.pow(10, (opRate - myRate) / 400));
-      const expectedOp = 1 - expectedMy;
+      if (!self.result || !opp.result) return;
 
-      let myScore = myResult === "win" ? 1 : 0;
-      let opScore = opponentResult === "win" ? 1 : 0;
+      if ((self.result === "win" && opp.result === "lose") ||
+          (self.result === "lose" && opp.result === "win")) {
+        const myUserRef = db.collection("users").doc(uid);
+        const opUserRef = db.collection("users").doc(opponentUid);
+        const myUser = (await myUserRef.get()).data();
+        const opUser = (await opUserRef.get()).data();
 
-      const newMyRate = Math.round(myRate + k * (myScore - expectedMy));
-      const newOpRate = Math.round(opRate + k * (opScore - expectedOp));
+        const myOld = myUser.rate ?? 1500;
+        const opOld = opUser.rate ?? 1500;
 
-      await db.collection("users").doc(uid).update({ rate: newMyRate });
-      await db.collection("users").doc(opponentId).update({ rate: newOpRate });
+        const expectedA = 1 / (1 + Math.pow(10, (opOld - myOld) / 400));
+        const expectedB = 1 / (1 + Math.pow(10, (myOld - opOld) / 400));
 
-      await db.collection("rankings").doc("amiibo").collection("players").doc(uid).set({ uid });
-      await db.collection("rankings").doc("amiibo").collection("players").doc(opponentId).set({ uid: opponentId });
+        const scoreA = self.result === "win" ? 1 : 0;
+        const scoreB = opp.result === "win" ? 1 : 0;
+
+        const k = 32;
+        const newMyRate = Math.round(myOld + k * (scoreA - expectedA));
+        const newOpRate = Math.round(opOld + k * (scoreB - expectedB));
+
+        await myUserRef.update({ rate: newMyRate });
+        await opUserRef.update({ rate: newOpRate });
+
+        const rankRef = db.doc(`rankings/amiibo/players/${uid}`);
+        const opRankRef = db.doc(`rankings/amiibo/players/${opponentUid}`);
+        await rankRef.set({ name: myUser.name, rate: newMyRate, icon: myUser.icon, character: myUser.amiiboCharacter });
+        await opRankRef.set({ name: opUser.name, rate: newOpRate, icon: opUser.icon, character: opUser.amiiboCharacter });
+
+        alert("対戦が終了しました！");
+        window.location.href = "index.html";
+      } else {
+        alert("勝ち／負けの判定に矛盾があります。再入力してください。");
+        await matchRef.doc(uid).update({ result: firebase.firestore.FieldValue.delete() });
+        await matchRef.doc(opponentUid).update({ result: firebase.firestore.FieldValue.delete() });
+      }
+    }
+
+    async function sendComment() {
+      const text = document.getElementById("commentInput").value.trim();
+      if (!text) return;
+      const docRef = matchRef.doc("comments_" + opponentUid);
+      await docRef.set({ text });
+      const box = document.getElementById("commentBox");
+      box.innerHTML += `<p><strong>自分:</strong> ${text}</p>`;
+      document.getElementById("commentInput").value = "";
     }
   </script>
 </body>
