@@ -160,8 +160,7 @@
         });
     });
 
-    <script>
-  async function updateRankings(winnerUid, loserUid) {
+    async function updateRankings(winnerUid, loserUid) {
     const rankingsRef = db.collection("rankings").doc("amiibo").collection("players");
 
     const winnerSnap = await rankingsRef.doc(winnerUid).get();
@@ -190,8 +189,6 @@
     await rankingsRef.doc(winnerUid).set(winnerData);
     await rankingsRef.doc(loserUid).set(loserData);
   }
-</script>
-
     async function submitRoomCode() {
       const code = document.getElementById("roomCode").value;
       if (!code) return alert("部屋番号を入力してください");
