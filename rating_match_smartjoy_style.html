@@ -45,12 +45,12 @@
     const auth = firebase.auth();
 
     let uid = "";
+    let roomId = "";
     let unsubscribe = null;
 
     auth.onAuthStateChanged(async (user) => {
       if (user) {
         uid = user.uid;
-        await ensureUserRate(uid);
         await startMatching(uid);
       } else {
         alert("ログインしてください");
@@ -58,21 +58,12 @@
       }
     });
 
-    async function ensureUserRate(uid) {
-      const userRef = db.collection("users").doc(uid);
-      const userDoc = await userRef.get();
-      if (!userDoc.exists || !userDoc.data().rate) {
-        await userRef.set({ rate: 1500, name: auth.currentUser.displayName || "未設定" }, { merge: true });
-      }
-    }
-
     async function startMatching(uid) {
       const waitingRef = db.collection("waiting_users").doc("singleton");
       const roomRef = db.collection("matching_rooms");
 
       const doc = await waitingRef.get();
       if (!doc.exists || !doc.data().uid || doc.data().uid === uid) {
-        // 自分がホスト側として待機
         await waitingRef.set({ uid });
         const unsubscribeWaiting = waitingRef.onSnapshot(async (snapshot) => {
           const data = snapshot.data();
@@ -80,21 +71,21 @@
             const newRoom = await findRoom(uid);
             if (newRoom) {
               unsubscribeWaiting();
+              await waitingRef.delete(); // 修正: 先に削除
               localStorage.setItem("roomId", newRoom);
               window.location.href = "match_screen.html";
             }
           }
         });
       } else {
-        // 相手が待っている状態で、自分がゲスト側として入室
         const opponentUid = doc.data().uid;
-        const roomId = `${opponentUid}_${uid}_${Date.now()}`;
+        roomId = `${opponentUid}_${uid}_${Date.now()}`;
         await roomRef.doc(roomId).set({
           player1: opponentUid,
           player2: uid,
           createdAt: Date.now()
         });
-        await waitingRef.delete();
+        await waitingRef.delete(); // 修正: 先に削除
         localStorage.setItem("roomId", roomId);
         window.location.href = "match_screen.html";
       }
