@@ -45,8 +45,7 @@
     const auth = firebase.auth();
 
     let uid = "";
-    let roomId = "";
-    let unsubscribe = null;
+    let unsubscribeWaiting = null;
 
     auth.onAuthStateChanged(async (user) => {
       if (user) {
@@ -64,48 +63,33 @@
 
       const doc = await waitingRef.get();
       if (!doc.exists || !doc.data().uid || doc.data().uid === uid) {
+        // あなたが先に待っている側（player1）
         await waitingRef.set({ uid });
-        const unsubscribeWaiting = waitingRef.onSnapshot(async (snapshot) => {
+
+        unsubscribeWaiting = waitingRef.onSnapshot(async (snapshot) => {
           const data = snapshot.data();
           if (data.uid !== uid) {
-            const newRoom = await findRoom(uid);
-            if (newRoom) {
-              unsubscribeWaiting();
-              localStorage.setItem("roomId", newRoom);
-              
-localStorage.setItem("roomId", roomId);
-window.location.href = "match_screen.html";
-
+            // 誰か来た（player2）
+            const newRoomId = await findRoom(uid);
+            if (newRoomId) {
+              localStorage.setItem("roomId", newRoomId);
+              window.location.href = "match_screen.html";
             }
           }
         });
       } else {
+        // あなたが後に来た側（player2）
         const opponentUid = doc.data().uid;
-        roomId = `${opponentUid}_${uid}_${Date.now()}`;
-        
-await roomRef.doc(roomId).set({
-  player1: opponentUid,
-  player2: uid,
-  createdAt: Date.now()
-});
-const unsubscribeRoom = roomRef.doc(roomId).onSnapshot((docSnapshot) => {
-  if (docSnapshot.exists) {
-    localStorage.setItem("roomId", roomId);
-    window.location.href = "match_screen.html";
-  }
-});
-return;
-
+        const roomId = `${opponentUid}_${uid}_${Date.now()}`;
+        await roomRef.doc(roomId).set({
           player1: opponentUid,
           player2: uid,
           createdAt: Date.now()
         });
         await waitingRef.delete();
-        localStorage.setItem("roomId", roomId);
-        
-localStorage.setItem("roomId", roomId);
-window.location.href = "match_screen.html";
 
+        localStorage.setItem("roomId", roomId);
+        window.location.href = "match_screen.html";
       }
     }
 
@@ -121,7 +105,7 @@ window.location.href = "match_screen.html";
     }
 
     async function cancelMatch(msg = "マッチングをキャンセルしました") {
-      if (unsubscribe) unsubscribe();
+      if (unsubscribeWaiting) unsubscribeWaiting();
       const current = await db.collection("waiting_users").doc("singleton").get();
       if (current.exists && current.data().uid === uid) {
         await db.collection("waiting_users").doc("singleton").delete();
