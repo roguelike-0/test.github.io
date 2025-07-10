@@ -13,55 +13,56 @@
     const firebaseConfig = {
       apiKey: "AIzaSyDMVAb0htcBm2Yv3uKpJ7Kmqyvhmr21b9o",
       authDomain: "smajoy-8e047.firebaseapp.com",
-      projectId: "smajoy-8e047",
-      storageBucket: "smajoy-8e047.appspot.com",
-      messagingSenderId: "878614139782",
-      appId: "1:878614139782:web:a168073265950c74d71207"
+      projectId: "smajoy-8e047"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
+
     let uid = "";
 
     auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        uid = user.uid;
-        const waitingRef = db.collection("waiting_users").doc("singleton");
-        const snapshot = await waitingRef.get();
-
-        if (!snapshot.exists || snapshot.data().uid === uid) {
-          // あなたがplayer1（先に来た人）
-          await waitingRef.set({ uid });
-
-          // matching_roomsを監視する
-          db.collection("matching_rooms")
-            .where("player1", "==", uid)
-            .onSnapshot((querySnapshot) => {
-              querySnapshot.forEach((doc) => {
-                const data = doc.data();
-                if (data.player2) {
-                  localStorage.setItem("roomId", doc.id);
-                  waitingRef.delete(); // 自分がplayer1なら削除してOK
-                  window.location.href = "match_screen.html";
-                }
-              });
-            });
-        } else {
-          // あなたがplayer2（後から来た人）
-          const opponentUid = snapshot.data().uid;
-          const roomId = `${opponentUid}_${uid}_${Date.now()}`;
-          await db.collection("matching_rooms").doc(roomId).set({
-            player1: opponentUid,
-            player2: uid,
-            createdAt: Date.now()
-          });
-          await waitingRef.delete();
-          localStorage.setItem("roomId", roomId);
-          window.location.href = "match_screen.html";
-        }
-      } else {
+      if (!user) {
         alert("ログインしてください");
-        window.location.href = "index.html";
+        location.href = "index.html";
+        return;
+      }
+
+      uid = user.uid;
+      const waitingRef = db.collection("waiting_users").doc("singleton");
+      const roomRef = db.collection("matching_rooms");
+
+      const doc = await waitingRef.get();
+
+      if (!doc.exists || doc.data().uid === uid) {
+        // あなたが player1（待機側）
+        await waitingRef.set({ uid });
+
+        // 自分が含まれるルームができたら遷移
+        roomRef.where("player1", "==", uid).onSnapshot((snapshot) => {
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            if (data.player2) {
+              localStorage.setItem("roomId", doc.id);
+              waitingRef.delete(); // 自分の待機状態削除
+              location.href = "match_screen.html";
+            }
+          });
+        });
+      } else {
+        // あなたが player2（後から来た人）
+        const opponentUid = doc.data().uid;
+        const roomId = `${opponentUid}_${uid}_${Date.now()}`;
+
+        await roomRef.doc(roomId).set({
+          player1: opponentUid,
+          player2: uid,
+          createdAt: Date.now()
+        });
+
+        await waitingRef.delete();
+        localStorage.setItem("roomId", roomId);
+        location.href = "match_screen.html";
       }
     });
   </script>
