@@ -29,6 +29,9 @@
       padding: 10px;
       border-radius: 8px;
     }
+    #resultButtons {
+      margin-top: 20px;
+    }
   </style>
 </head>
 <body>
@@ -52,6 +55,12 @@
     </div>
   </div>
 
+  <div id="resultButtons" style="display:none;">
+    <button onclick="submitResult('win')">勝ち</button>
+    <button onclick="submitResult('lose')">負け</button>
+    <p id="resultMessage"></p>
+  </div>
+
   <div id="chat">
     <h3>コメント</h3>
     <input type="text" id="chatInput" placeholder="コメントを入力">
@@ -68,7 +77,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
-    let uid = "", roomId = "", isHost = false, userNameMap = {};
+    let uid = "", roomId = "", isHost = false, userNameMap = {}, resultState = null;
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) {
@@ -109,10 +118,21 @@
           document.getElementById("hostArea").style.display = "none";
           document.getElementById("guestArea").style.display = "none";
           document.getElementById("title").innerText = "対戦開始";
+          document.getElementById("resultButtons").style.display = "block";
+        }
+
+        if (val.results && Object.keys(val.results).length >= 2) {
+          const values = Object.values(val.results);
+          if (values[0] === values[1]) {
+            document.getElementById("resultMessage").innerText = "どちらも" + (values[0] === "win" ? "勝ち" : "負け") + "を選んでいます。結果が不一致です。もう一度入力してください。";
+            db.collection("matching_rooms").doc(roomId).update({ results: {} });
+          } else {
+            document.getElementById("resultMessage").innerText = "勝敗が確定しました。";
+            // 勝敗反映はこのタイミングで呼び出してもOK（必要に応じて）
+          }
         }
       });
 
-      // チャットの表示処理
       db.collection("matching_rooms").doc(roomId).collection("comments")
         .orderBy("timestamp")
         .onSnapshot((querySnapshot) => {
@@ -145,6 +165,21 @@
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
       });
       document.getElementById("chatInput").value = "";
+    }
+
+    async function submitResult(choice) {
+      const roomRef = db.collection("matching_rooms").doc(roomId);
+      const doc = await roomRef.get();
+      const data = doc.data();
+
+      const current = data.results || {};
+      if (current[uid]) {
+        alert("すでに結果を送信済みです。");
+        return;
+      }
+
+      current[uid] = choice;
+      await roomRef.update({ results: current });
     }
   </script>
 </body>
