@@ -3,137 +3,200 @@
 <head>
   <meta charset="UTF-8" />
   <title>対戦画面</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js">
+    function logout() {
+      auth.signOut().then(() => {
+        alert("ログアウトしました");
+        window.location.href = "index.html";
+      });
+    }
+    function toggleSidebar() {
+      document.getElementById("sidebar").classList.toggle("active");
+      document.getElementById("overlay").classList.toggle("active");
+    }
+    function closeSidebar() {
+      document.getElementById("sidebar").classList.remove("active");
+      document.getElementById("overlay").classList.remove("active");
+    }
+
+</script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js">
+    function logout() {
+      auth.signOut().then(() => {
+        alert("ログアウトしました");
+        window.location.href = "index.html";
+      });
+    }
+    function toggleSidebar() {
+      document.getElementById("sidebar").classList.toggle("active");
+      document.getElementById("overlay").classList.toggle("active");
+    }
+    function closeSidebar() {
+      document.getElementById("sidebar").classList.remove("active");
+      document.getElementById("overlay").classList.remove("active");
+    }
+
+</script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js">
+    function logout() {
+      auth.signOut().then(() => {
+        alert("ログアウトしました");
+        window.location.href = "index.html";
+      });
+    }
+    function toggleSidebar() {
+      document.getElementById("sidebar").classList.toggle("active");
+      document.getElementById("overlay").classList.toggle("active");
+    }
+    function closeSidebar() {
+      document.getElementById("sidebar").classList.remove("active");
+      document.getElementById("overlay").classList.remove("active");
+    }
+
+</script>
   <style>
-    body {
-      margin: 0;
-      font-family: sans-serif;
-      background-color: #111;
-      color: #fff;
-    }
-    .main-container {
-      display: flex;
-      min-height: 100vh;
-    }
-    .sidebar {
-      width: 200px;
-      background-color: #222;
-      padding: 20px;
-      box-sizing: border-box;
-    }
-    .sidebar h2 {
-      font-size: 16px;
-      margin-bottom: 10px;
-    }
-    .sidebar a {
-      display: block;
-      color: #fff;
-      text-decoration: none;
-      margin: 8px 0;
-    }
-    .content {
-      flex: 1;
-      padding: 20px;
-      box-sizing: border-box;
-    }
     #players {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 20px;
+      margin: 20px;
     }
     #players > div {
       width: 45%;
-      background: #1e1e1e;
+      background: #eee;
       padding: 10px;
       border-radius: 8px;
-    }
-    #roomSection {
-      background: #1e1e1e;
-      padding: 10px;
-      border-radius: 8px;
-      margin-bottom: 20px;
     }
     #chat {
-      margin-top: 20px;
+      margin-top: 30px;
     }
     #messages {
       margin-top: 10px;
       max-height: 150px;
       overflow-y: auto;
-      background: #333;
+      background: #f5f5f5;
       padding: 10px;
       border-radius: 8px;
     }
-    input[type="text"] {
-      padding: 6px;
-      font-size: 14px;
-      width: 200px;
-    }
-    button {
-      padding: 6px 12px;
-      font-size: 14px;
-      border: none;
-      border-radius: 4px;
-      background: #4CAF50;
-      color: white;
-      cursor: pointer;
-      margin-left: 5px;
+    #resultButtons {
+      margin-top: 20px;
     }
     .disabled {
       background-color: gray !important;
       color: #fff;
       cursor: not-allowed;
     }
-  </style>
+  
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: #222;
+      padding: 15px 20px;
+      font-size: 18px;
+      font-weight: bold;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid #333;
+    }
+    .menu-toggle {
+      font-size: 24px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: -200px;
+      width: 200px;
+      height: 100%;
+      background: #1c1c1c;
+      padding: 20px;
+      box-sizing: border-box;
+      transition: left 0.3s ease;
+      z-index: 101;
+    }
+    .sidebar.active {
+      left: 0;
+    }
+    .overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+    }
+    .overlay.active {
+      display: block;
+    }
+    .sidebar a {
+      display: block;
+      color: #fff;
+      text-decoration: none;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+    .main-content {
+      padding: 90px 20px 40px 20px;
+    }
+
+</style>
 </head>
 <body>
-  <div class="main-container">
-    <div class="sidebar">
-      <h2>スマジョイ</h2>
-      <a href="index.html">🏠 ホーム</a>
-      <a href="mypage.html">👤 マイページ</a>
-      <a href="rating_match_smartjoy_style.html">⚔️ レート対戦</a>
-      <a href="logout.html">🚪 ログアウト</a>
+
+  <!-- サイドバー -->
+  <div class="sidebar" id="sidebar">
+    <a href="#" id="logout-btn" onclick="logout()">🚪 ログアウト</a>
+    <div id="user-info" style="margin: 10px 0; font-size: 14px;"></div>
+    <a href="index.html">🏠 トップ</a>
+    <a href="mypage.html">📄 マイページ</a>
+    <a href="edit.html">✏️ プロフィール編集</a>
+  </div>
+  <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <!-- ヘッダー -->
+  <div class="header">
+    <span class="menu-toggle" onclick="toggleSidebar()">≡</span>
+    スマジョイ｜対戦画面
+  </div>
+
+<div class="main-content" onclick="closeSidebar()">
+  <h1 id="title">対戦準備中...</h1>
+
+  <div id="players">
+    <div id="player1Info">Player1: 読み込み中...</div>
+    <div id="player2Info">Player2: 読み込み中...</div>
+  </div>
+
+  <div id="roomSection">
+    <div id="hostArea" style="display:none;">
+      <input type="text" id="roomCode" placeholder="部屋番号を入力">
+      <button onclick="submitRoomCode()">設定</button>
     </div>
-    <div class="content">
-      <h1 id="title">対戦準備中...</h1>
-
-      <div id="players">
-        <div id="player1Info">Player1: 読み込み中...</div>
-        <div id="player2Info">Player2: 読み込み中...</div>
-      </div>
-
-      <div id="roomSection">
-        <div id="hostArea" style="display:none;">
-          <input type="text" id="roomCode" placeholder="部屋番号を入力">
-          <button onclick="submitRoomCode()">設定</button>
-        </div>
-        <div id="guestArea" style="display:none;">
-          <p>ホストが部屋番号を入力しています...</p>
-        </div>
-        <div id="roomDisplayArea" style="display:none;">
-          <p id="roomDisplay">部屋番号:</p>
-        </div>
-      </div>
-
-      <div id="resultButtons" style="display:none;">
-        <button id="winBtn" onclick="submitResult('win')">勝ち</button>
-        <button id="loseBtn" onclick="submitResult('lose')">負け</button>
-      </div>
-
-      <div id="chat">
-        <h3>コメント</h3>
-        <input type="text" id="chatInput" placeholder="コメントを入力">
-        <button onclick="submitComment()">書き込む</button>
-        <div id="messages"></div>
-      </div>
+    <div id="guestArea" style="display:none;">
+      <p>ホストが部屋番号を入力しています...</p>
+    </div>
+    <div id="roomDisplayArea" style="display:none;">
+      <p id="roomDisplay">部屋番号:</p>
     </div>
   </div>
 
-  <!-- Firebase & Game Logic（元のまま） -->
+  <div id="resultButtons" style="display:none;">
+    <button id="winBtn" onclick="submitResult('win')">勝ち</button>
+    <button id="loseBtn" onclick="submitResult('lose')">負け</button>
+  </div>
+
+  <div id="chat">
+    <h3>コメント</h3>
+    <input type="text" id="chatInput" placeholder="コメントを入力">
+    <button onclick="submitComment()">書き込む</button>
+    <div id="messages"></div>
+  </div>
+
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyDMVAb0htcBm2Yv3uKpJ7Kmqyvhmr21b9o",
@@ -229,39 +292,44 @@
         });
     });
 
-    async function updateRankings(winnerUid, loserUid) {
-      const usersRef = db.collection("users");
-      const rankingsRef = db.collection("rankings").doc("amiibo").collection("players");
+   async function updateRankings(winnerUid, loserUid) {
+  const usersRef = db.collection("users");
+  const rankingsRef = db.collection("rankings").doc("amiibo").collection("players");
 
-      const winnerUserSnap = await usersRef.doc(winnerUid).get();
-      const loserUserSnap = await usersRef.doc(loserUid).get();
+  const winnerUserSnap = await usersRef.doc(winnerUid).get();
+  const loserUserSnap = await usersRef.doc(loserUid).get();
 
-      const winnerUser = winnerUserSnap.data();
-      const loserUser = loserUserSnap.data();
+  const winnerUser = winnerUserSnap.data();
+  const loserUser = loserUserSnap.data();
 
-      let winnerRate = winnerUser?.rate ?? 1500;
-      let loserRate = loserUser?.rate ?? 1500;
+  // デフォルトレート
+  let winnerRate = winnerUser?.rate ?? 1500;
+  let loserRate = loserUser?.rate ?? 1500;
 
-      winnerRate += 30;
-      loserRate -= 30;
+  // レート加減
+  winnerRate += 30;
+  loserRate -= 30;
 
-      await usersRef.doc(winnerUid).update({ rate: winnerRate });
-      await usersRef.doc(loserUid).update({ rate: loserRate });
+  // users 側にも反映
+  await usersRef.doc(winnerUid).update({ rate: winnerRate });
+  await usersRef.doc(loserUid).update({ rate: loserRate });
 
-      await rankingsRef.doc(winnerUid).set({
-        name: winnerUser.name || "名無し",
-        icon: winnerUser.icon || "",
-        character: winnerUser.amiiboCharacter || "",
-        rate: winnerRate
-      });
+  // rankings に登録（なければ新規追加）
+  await rankingsRef.doc(winnerUid).set({
+    name: winnerUser.name || "名無し",
+    icon: winnerUser.icon || "",
+    character: winnerUser.amiiboCharacter || "",
+    rate: winnerRate
+  });
 
-      await rankingsRef.doc(loserUid).set({
-        name: loserUser.name || "名無し",
-        icon: loserUser.icon || "",
-        character: loserUser.amiiboCharacter || "",
-        rate: loserRate
-      });
-    }
+  await rankingsRef.doc(loserUid).set({
+    name: loserUser.name || "名無し",
+    icon: loserUser.icon || "",
+    character: loserUser.amiiboCharacter || "",
+    rate: loserRate
+  });
+}
+
 
     async function submitRoomCode() {
       const code = document.getElementById("roomCode").value;
@@ -313,6 +381,23 @@
       winBtn.classList.remove("disabled");
       loseBtn.classList.remove("disabled");
     }
-  </script>
+  
+    function logout() {
+      auth.signOut().then(() => {
+        alert("ログアウトしました");
+        window.location.href = "index.html";
+      });
+    }
+    function toggleSidebar() {
+      document.getElementById("sidebar").classList.toggle("active");
+      document.getElementById("overlay").classList.toggle("active");
+    }
+    function closeSidebar() {
+      document.getElementById("sidebar").classList.remove("active");
+      document.getElementById("overlay").classList.remove("active");
+    }
+
+</script>
+</div>
 </body>
 </html>
