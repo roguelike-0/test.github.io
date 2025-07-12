@@ -142,16 +142,14 @@
         tr.innerHTML = `
           <td colspan="5">
             <div class="room-box">
-              <div class="room-header">No.${index + 1}</div>
-              <div class="room-content">
-                <div class="player-info">
-                  <img src="${userIconMap[p1]}" class="user-icon">
+              <div class="room-header">No.${index + 1}
+               <img src="${userIconMap[p1]}" class="user-icon">
                   ${truncate(userNameMap[p1] || "名無し")} 
-                
-                
                   <img src="${userIconMap[p2]}" class="user-icon">
                   ${truncate(userNameMap[p2] || "名無し")} 
-                
+              </div>
+              <div class="room-content">
+                <div class="player-info">
                 ${(p1 === uid || p2 === uid) ? `<button class="return-btn" onclick="returnToRoom('${room.id}')">部屋に戻る</button>` : ""}
               </div>
             </div>
