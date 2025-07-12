@@ -1,70 +1,58 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>レート対戦マッチング</title>
   <style>
     body {
       background: #111;
       color: #fff;
       font-family: sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      padding: 20px;
-      flex-wrap: wrap;
       margin: 0;
+      padding: 20px;
     }
-
     .container {
       display: flex;
       flex-direction: column;
-      width: 100%;
+      gap: 20px;
       max-width: 600px;
       margin: 0 auto;
     }
-
     .panel {
       background: #1e1e1e;
       padding: 20px;
       border-radius: 8px;
       width: 100%;
-      margin-bottom: 16px;
-      box-sizing: border-box;
     }
-
-    .room-card {
+    button {
+      padding: 8px 16px;
       font-size: 14px;
-      text-align: center;
-      border: 1px solid #333;
-      border-radius: 6px;
-      padding: 10px;
-      margin-bottom: 10px;
+      border: none;
+      border-radius: 4px;
+      background: #4CAF50;
+      color: white;
+      cursor: pointer;
     }
-
-    .player-row {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      margin-top: 4px;
+    .return-btn.hidden {
+      display: none;
     }
-
+    table {
+      width: 100%;
+    }
+    td {
+      font-size: 14px;
+      padding: 10px 0;
+    }
     .player-icon {
-      width: 32px;
-      height: 32px;
+      width: 28px;
+      height: 28px;
       border-radius: 50%;
-    }
-
-    .return-btn {
-      background: #2ecc71;
-      margin-top: 10px;
-      font-size: 14px;
+      vertical-align: middle;
+      margin-right: 6px;
     }
   </style>
 </head>
-
 <body>
   <div class="container">
     <div class="panel">
@@ -73,13 +61,11 @@
       <button onclick="startMatching()">対戦相手を探す</button>
       <p id="matchingStatus"></p>
     </div>
-
     <div class="panel">
       <h2>マッチング中の部屋一覧</h2>
-      <div id="roomList"></div>
+      <table id="roomList"><tbody></tbody></table>
     </div>
   </div>
-
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
@@ -92,45 +78,45 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
-
     let uid = "";
     let userNameMap = {};
+    let userRateMap = {};
     let userIconMap = {};
     let myRoomNo = null;
 
     async function fetchUserNames() {
       const snapshot = await db.collection("users").get();
       snapshot.forEach(doc => {
-        userNameMap[doc.id] = doc.data().name || "名無し";
-        userIconMap[doc.id] = doc.data().icon || "";
+        const data = doc.data();
+        userNameMap[doc.id] = data.name || "名無し";
+        userRateMap[doc.id] = data.rate || "???";
+        userIconMap[doc.id] = data.icon || "https://placehold.jp/30x30.png";
       });
     }
 
-    function createPlayerRow(userId) {
-      const name = userNameMap[userId] || "名無し";
-      const icon = userIconMap[userId] || "";
-      return `<div class="player-row">
-                <img class="player-icon" src="${icon}" alt="icon">
-                <span>${name}</span>
-              </div>`;
-    }
-
     function renderRooms(rooms) {
-      const container = document.getElementById("roomList");
-      container.innerHTML = "";
+      const tbody = document.querySelector("#roomList tbody");
+      tbody.innerHTML = "";
       rooms.forEach((room, index) => {
-        const p1 = createPlayerRow(room.player1);
-        const p2 = createPlayerRow(room.player2);
-        const div = document.createElement("div");
-        div.className = "room-card";
-        div.innerHTML = `
-          <div><strong>No.${index + 1}</strong></div>
-          ${p1}
-          <div>VS</div>
-          ${p2}
-          <button class="return-btn" onclick="returnToRoom('${room.id}')">部屋に戻る</button>
+        const p1 = userNameMap[room.player1] || "名無し";
+        const p2 = userNameMap[room.player2] || "名無し";
+        const r1 = userRateMap[room.player1] || "???";
+        const r2 = userRateMap[room.player2] || "???";
+        const i1 = userIconMap[room.player1];
+        const i2 = userIconMap[room.player2];
+        const isSelf = (room.player1 === uid || room.player2 === uid);
+        const showButton = isSelf ? "" : "hidden";
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>
+            No.${index + 1}<br>
+            <img class="player-icon" src="${i1}">${p1}（${r1}）<br>
+            VS<br>
+            <img class="player-icon" src="${i2}">${p2}（${r2}）<br>
+            <button class="return-btn ${showButton}" onclick="returnToRoom('${room.id}')">部屋に戻る</button>
+          </td>
         `;
-        container.appendChild(div);
+        tbody.appendChild(tr);
         if (room.player1 === uid || room.player2 === uid) {
           myRoomNo = index + 1;
           localStorage.setItem("roomId", room.id);
