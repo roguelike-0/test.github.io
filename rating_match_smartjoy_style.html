@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -10,67 +11,9 @@
       color: #fff;
       font-family: sans-serif;
       margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    .header {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      background: #222;
-      padding: 15px 20px;
-      font-size: 18px;
-      font-weight: bold;
-      z-index: 100;
-      display: flex;
-      align-items: center;
-      border-bottom: 1px solid #333;
-    }
-    .menu-toggle {
-      font-size: 24px;
-      cursor: pointer;
-      margin-right: 10px;
-    }
-    .sidebar {
-      position: fixed;
-      top: 0;
-      left: -200px;
-      width: 200px;
-      height: 100%;
-      background: #1c1c1c;
       padding: 20px;
       box-sizing: border-box;
-      transition: left 0.3s ease;
-      z-index: 101;
     }
-    .sidebar.active {
-      left: 0;
-    }
-    .overlay {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 100;
-    }
-    .overlay.active {
-      display: block;
-    }
-    .sidebar a {
-      display: block;
-      color: #fff;
-      text-decoration: none;
-      margin-bottom: 10px;
-      font-size: 16px;
-    }
-    .main-content {
-      padding: 90px 20px 40px 20px;
-    }
-
     .container {
       display: flex;
       flex-direction: column;
@@ -146,14 +89,116 @@
   </style>
 </head>
 <body>
-<p id="matchingStatus"></p>
-<script>
-  async function startMatching() {
-    document.getElementById("matchingStatus").innerText = "対戦相手を探しています...";
-    setTimeout(() => {
+  <div class="container">
+    <div class="panel">
+      <h2>対戦待ち</h2>
+      <p id="waitingCount">現在 0 人が参加中</p>
+      <button onclick="startMatching()">対戦相手を探す</button>
+      <p id="matchingStatus"></p>
+    </div>
+    <div class="panel">
+      <h2>マッチング中の部屋一覧</h2>
+      <table id="roomList"><tbody></tbody></table>
+    </div>
+  </div>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDMVAb0htcBm2Yv3uKpJ7Kmqyvhmr21b9o",
+      authDomain: "smajoy-8e047.firebaseapp.com",
+      projectId: "smajoy-8e047"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+    let uid = "";
+    let userNameMap = {};
+    let userIconMap = {};
+    let userRateMap = {};
+    let myRoomNo = null;
+
+    async function fetchUserNames() {
+      const snapshot = await db.collection("users").get();
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        userNameMap[doc.id] = data.name || "名無し";
+        userIconMap[doc.id] = data.icon || "https://via.placeholder.com/24";
+        userRateMap[doc.id] = data.rate || "----";
+      });
+    }
+
+    function truncate(name) {
+      return name.length > 5 ? name.slice(0, 5) + "…" : name;
+    }
+
+    function renderRooms(rooms) {
+      const tbody = document.querySelector("#roomList tbody");
+      tbody.innerHTML = "";
+      rooms.forEach((room, index) => {
+        const p1 = room.player1;
+        const p2 = room.player2;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td colspan="5">
+            <div class="room-box">
+              <div class="room-header">No.${index + 1}</div>
+              <div class="room-content">
+                <div class="player-info">
+                  <img src="${userIconMap[p1]}" class="user-icon">
+                  ${truncate(userNameMap[p1] || "名無し")} 
+                </div>
+                <div class="vs-text">VS</div>
+                <div class="player-info">
+                  <img src="${userIconMap[p2]}" class="user-icon">
+                  ${truncate(userNameMap[p2] || "名無し")}
+                </div>
+                ${(p1 === uid || p2 === uid) ? `<button class="return-btn" onclick="returnToRoom('${room.id}')">部屋に戻る</button>` : ""}
+              </div>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+        if (room.player1 === uid || room.player2 === uid) {
+          myRoomNo = index + 1;
+          localStorage.setItem("roomId", room.id);
+        }
+      });
+    }
+
+    function returnToRoom(roomId) {
+      localStorage.setItem("roomId", roomId);
+      location.href = "match_screen.html";
+    }
+
+    async function startMatching() {
+      if (myRoomNo !== null) {
+        alert(`すでにマッチング中です。部屋No.${myRoomNo}に戻ってください。`);
+        return;
+      }
+      document.getElementById("matchingStatus").innerText = "対戦相手を探しています...";
       location.href = "rating_match_smartjoy_style.html";
-    }, 500);
-  }
-</script>
+    }
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        alert("ログインしてください");
+        window.location.href = "index.html";
+        return;
+      }
+      uid = user.uid;
+      await fetchUserNames();
+      db.collection("matching_rooms").onSnapshot(snapshot => {
+        const rooms = [];
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          rooms.push({ id: doc.id, ...data });
+        });
+        renderRooms(rooms);
+        document.getElementById("waitingCount").innerText = `現在 ${rooms.length * 2} 人が参加中`;
+      });
+    });
+  </script>
 </body>
 </html>
