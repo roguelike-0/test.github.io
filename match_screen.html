@@ -1,81 +1,185 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>対戦画面</title>
+  <title>対戦画面｜スマジョイ</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
   <style>
     body {
-      margin: 0;
-      font-family: sans-serif;
-      background-color: #111;
+      background: #111;
       color: #fff;
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
-    .main-container {
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: #222;
+      padding: 15px 20px;
+      font-size: 18px;
+      font-weight: bold;
+      z-index: 100;
       display: flex;
-      min-height: 100vh;
+      align-items: center;
+      border-bottom: 1px solid #333;
+    }
+    .menu-toggle {
+      font-size: 24px;
+      cursor: pointer;
+      margin-right: 10px;
     }
     .sidebar {
+      position: fixed;
+      top: 0;
+      left: -200px;
       width: 200px;
-      background-color: #222;
+      height: 100%;
+      background: #1c1c1c;
       padding: 20px;
       box-sizing: border-box;
-      transition: transform 0.3s ease;
-      transform: translateX(0);
+      transition: left 0.3s ease;
+      z-index: 101;
     }
-    .sidebar.hidden {
-      transform: translateX(-220px);
+    .sidebar.active {
+      left: 0;
     }
-    .sidebar h2 {
-      font-size: 16px;
-      margin-bottom: 10px;
+    .overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+    }
+    .overlay.active {
+      display: block;
     }
     .sidebar a {
       display: block;
       color: #fff;
       text-decoration: none;
-      margin: 8px 0;
+      margin-bottom: 10px;
+      font-size: 16px;
     }
-    .content {
-      flex: 1;
+    .main-content {
+      padding: 90px 20px 40px 20px;
+    }
+    .panel {
+      background: #1e1e1e;
       padding: 20px;
-      box-sizing: border-box;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      max-width: 600px;
+      margin: 0 auto;
     }
-    #toggleSidebar {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      z-index: 10;
-      background-color: #333;
-      color: #fff;
+    button {
+      padding: 8px 16px;
+      font-size: 14px;
       border: none;
-      padding: 6px 10px;
+      border-radius: 4px;
+      background: #4CAF50;
+      color: white;
       cursor: pointer;
+    }
+    .return-btn {
+      background: #2ecc71;
+      margin-left: 10px;
     }
   </style>
 </head>
 <body>
-  <div class="main-container">
-    <div class="sidebar" id="sidebar">
-      <h2>スマジョイ</h2>
-      <a href="index.html">🏠 ホーム</a>
-      <a href="mypage.html">👤 マイページ</a>
-      <a href="rating_match_smartjoy_style.html">⚔️ レート対戦</a>
-      <a href="logout.html">🚪 ログアウト</a>
-    </div>
-    <div class="content">
-      <button id="toggleSidebar">☰</button>
-      <h1>ここに対戦処理が入ります</h1>
+
+  <!-- サイドバー -->
+  <div class="sidebar" id="sidebar">
+    <a href="#" id="login-btn" onclick="loginWithGoogle()">👤 Googleログイン</a>
+    <a href="#" id="logout-btn" onclick="logout()" style="display:none;">🚪 ログアウト</a>
+    <div id="user-info" style="margin: 10px 0; font-size: 14px;"></div>
+    <a href="index.html">🏠 トップ</a>
+    <a href="mypage.html">📄 マイページ</a>
+    <a href="edit.html">✏️ プロフィール編集</a>
+  </div>
+
+  <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <!-- ヘッダー -->
+  <div class="header">
+    <span class="menu-toggle" onclick="toggleSidebar()">≡</span>
+    スマジョイ｜対戦画面
+  </div>
+
+  <!-- メインエリア -->
+  <div class="main-content" onclick="closeSidebar()">
+    <div class="panel">
+      <!-- 元のマッチング対戦画面の中身がここに入る（自動でJSが操作する） -->
+      <div id="match-screen-root">
+        読み込み中...
+      </div>
     </div>
   </div>
+
+  <!-- サイドバー用JS -->
   <script>
-    document.getElementById("toggleSidebar").addEventListener("click", function() {
-      document.getElementById("sidebar").classList.toggle("hidden");
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('active');
+      document.getElementById('overlay').classList.toggle('active');
+    }
+
+    function closeSidebar() {
+      document.getElementById('sidebar').classList.remove('active');
+      document.getElementById('overlay').classList.remove('active');
+    }
+  </script>
+
+  <!-- Firebase（互換）SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDMVAb0htcBm2Yv3uKpJ7Kmqyvhmr21b9o",
+      authDomain: "smajoy-8e047.firebaseapp.com",
+      projectId: "smajoy-8e047"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    window.loginWithGoogle = async () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      try {
+        const result = await auth.signInWithPopup(provider);
+        alert(`ようこそ、${result.user.displayName} さん！`);
+      } catch (error) {
+        alert("ログインに失敗しました。");
+      }
+    };
+
+    window.logout = () => {
+      auth.signOut().then(() => {
+        alert("ログアウトしました");
+      });
+    };
+
+    auth.onAuthStateChanged(user => {
+      const loginBtn = document.getElementById("login-btn");
+      const logoutBtn = document.getElementById("logout-btn");
+      const userInfo = document.getElementById("user-info");
+      if (user) {
+        loginBtn.style.display = "none";
+        logoutBtn.style.display = "block";
+        userInfo.innerHTML = `<img src="${user.photoURL}" style="width:24px; border-radius:50%;"> ${user.displayName}`;
+      } else {
+        window.location.href = "index.html";
+      }
     });
   </script>
+
+  <!-- 🔸ここに元の match_screen の JS をインポートしてOK -->
+  <script src="match_screen_core.js"></script> <!-- 外部分離済みなら -->
+
 </body>
 </html>
