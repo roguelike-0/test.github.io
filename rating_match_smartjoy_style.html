@@ -4,7 +4,6 @@
 <head>
   <meta charset="UTF-8" />
   <title>レート対戦マッチング</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
       background: #111;
@@ -14,51 +13,43 @@
       justify-content: center;
       align-items: flex-start;
       padding: 20px;
-      flex-wrap: wrap;
     }
     .container {
       display: flex;
-      flex-direction: row;
-      flex-wrap: wrap;
-      width: 100%;
-      max-width: 1000px;
-      justify-content: space-between;
+      flex-direction: column;
+      width: 95%;
+      max-width: 600px;
     }
     .panel {
       background: #1e1e1e;
       padding: 20px;
       border-radius: 8px;
-      width: 48%;
-      min-width: 280px;
       margin-bottom: 20px;
     }
     button {
-      padding: 10px 20px;
-      font-size: 16px;
+      padding: 8px 16px;
+      font-size: 14px;
       border: none;
       border-radius: 4px;
       background: #4CAF50;
       color: white;
       cursor: pointer;
     }
-    table {
-      width: 100%;
-      table-layout: fixed;
-      margin-top: 10px;
-    }
-    th, td {
-      padding: 6px 10px;
-      text-align: left;
-      word-wrap: break-word;
-    }
-    th:nth-child(1), td:nth-child(1) { width: 10%; }
-    th:nth-child(2), td:nth-child(2) { width: 25%; }
-    th:nth-child(3), td:nth-child(3) { width: 10%; text-align: center; }
-    th:nth-child(4), td:nth-child(4) { width: 25%; }
-    th:nth-child(5), td:nth-child(5) { width: 30%; text-align: right; }
     .return-btn {
       background: #2ecc71;
-      margin-top: 6px;
+      margin-top: 8px;
+    }
+    .room {
+      border-top: 1px solid #444;
+      padding: 10px 0;
+      font-size: 14px;
+    }
+    .icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      vertical-align: middle;
+      margin-right: 6px;
     }
   </style>
 </head>
@@ -72,91 +63,41 @@
     </div>
     <div class="panel">
       <h2>マッチング中の部屋一覧</h2>
-      <table id="roomList">
-        <thead>
-          <tr><th>No.</th><th>プレイヤー１</th><th></th><th>プレイヤー２</th><th></th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+      <div id="roomList"></div>
     </div>
   </div>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyDMVAb0htcBm2Yv3uKpJ7Kmqyvhmr21b9o",
-      authDomain: "smajoy-8e047.firebaseapp.com",
-      projectId: "smajoy-8e047"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const auth = firebase.auth();
-    let uid = "";
-    let userNameMap = {};
-    let myRoomNo = null;
+    const dummyRooms = [
+      {
+        no: 1,
+        player1: { name: "Loading Now", icon: "https://i.imgur.com/4AiXzf8.jpeg" },
+        player2: { name: "けさちゃんねる", icon: "https://i.imgur.com/4AiXzf8.jpeg" }
+      }
+    ];
 
-    async function fetchUserNames() {
-      const snapshot = await db.collection("users").get();
-      snapshot.forEach(doc => {
-        userNameMap[doc.id] = doc.data().name || "名無し";
-      });
-    }
-
-    function renderRooms(rooms) {
-      const tbody = document.querySelector("#roomList tbody");
-      tbody.innerHTML = "";
-      rooms.forEach((room, index) => {
-        const tr = document.createElement("tr");
-        const p1 = userNameMap[room.player1] || "名無し";
-        const p2 = userNameMap[room.player2] || "名無し";
-        tr.innerHTML = `
-          <td>No.${index + 1}</td>
-          <td>${p1}</td>
-          <td>VS</td>
-          <td>${p2}</td>
-          <td><button class="return-btn" onclick="returnToRoom('${room.id}')">部屋に戻る</button></td>
+    function renderRooms() {
+      const roomList = document.getElementById("roomList");
+      roomList.innerHTML = "";
+      dummyRooms.forEach(room => {
+        const div = document.createElement("div");
+        div.className = "room";
+        div.innerHTML = `
+          No.${room.no}<br>
+          <img src="${room.player1.icon}" class="icon">${room.player1.name}<br>
+          VS<br>
+          <img src="${room.player2.icon}" class="icon">${room.player2.name}<br>
+          <button class="return-btn">部屋に戻る</button>
         `;
-        tbody.appendChild(tr);
-        if (room.player1 === uid || room.player2 === uid) {
-          myRoomNo = index + 1;
-          localStorage.setItem("roomId", room.id);
-        }
+        roomList.appendChild(div);
       });
     }
 
-    function returnToRoom(roomId) {
-      localStorage.setItem("roomId", roomId);
-      location.href = "match_screen.html";
-    }
-
-    async function startMatching() {
-      if (myRoomNo !== null) {
-        alert(`すでにマッチング中です。部屋No.${myRoomNo}に戻ってください。`);
-        return;
-      }
+    function startMatching() {
       document.getElementById("matchingStatus").innerText = "対戦相手を探しています...";
-      location.href = "rating_match_smartjoy_style.html";
     }
 
-    auth.onAuthStateChanged(async (user) => {
-      if (!user) {
-        alert("ログインしてください");
-        window.location.href = "index.html";
-        return;
-      }
-      uid = user.uid;
-      await fetchUserNames();
-      db.collection("matching_rooms").onSnapshot(snapshot => {
-        const rooms = [];
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          rooms.push({ id: doc.id, ...data });
-        });
-        renderRooms(rooms);
-        document.getElementById("waitingCount").innerText = `現在 ${rooms.length * 2} 人が参加中`;
-      });
-    });
+    renderRooms();
   </script>
 </body>
 </html>
