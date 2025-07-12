@@ -105,12 +105,6 @@
               ? `<button class='btn btn-green' onclick="rejoin('${doc.id}')">部屋に戻る</button>`
               : ""}`;
           container.appendChild(roomDiv);
-
-          if (data.player1 === uid || data.player2 === uid) {
-            alreadyInRoomId = doc.id;
-            document.getElementById("alreadyMatched").innerText = `部屋No.${count}で対戦中です。部屋に戻ってください。`;
-          }
-
           count++;
         });
       });
@@ -118,7 +112,7 @@
 
     async function startMatching() {
       if (alreadyInRoomId) {
-        alert("すでにマッチング中です。部屋に戻ってください。");
+        alert("すでにマッチング中です。部屋No.${count}に戻ってください。");
         return;
       }
 
