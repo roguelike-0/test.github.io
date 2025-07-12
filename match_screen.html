@@ -81,7 +81,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
-    let uid = "", roomId = "", isHost = false, userDataMap = {}, player1Uid = "", player2Uid = "";
+    let uid = "", roomId = "", isHost = false, userNameMap = {}, userDataMap = {}, player1Uid = "", player2Uid = "";
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) {
@@ -102,18 +102,18 @@
 
       const users = await db.collection("users").get();
       users.forEach((doc) => {
-        userDataMap[doc.id] = {
-          name: doc.data().name || "名無し",
-          icon: doc.data().icon || "",
-          character: doc.data().amiiboCharacter || "",
-          rate: doc.data().rate || 1500
-        };
+        userNameMap[doc.id] = doc.data().name || "名無し";
+        userDataMap[doc.id] = doc.data();
       });
 
-      document.getElementById("player1Info").innerHTML =
-        `<strong>Player1:</strong> ${userDataMap[player1Uid]?.name}<br>レート: ${userDataMap[player1Uid]?.rate ?? '???'}`;
-      document.getElementById("player2Info").innerHTML =
-        `<strong>Player2:</strong> ${userDataMap[player2Uid]?.name}<br>レート: ${userDataMap[player2Uid]?.rate ?? '???'}`;
+      const getRate = (id) => userDataMap[id]?.rate ?? 1500;
+
+      document.getElementById("player1Info").innerHTML = `
+        <strong>${userNameMap[player1Uid]}</strong><br>レート: ${getRate(player1Uid)}
+      `;
+      document.getElementById("player2Info").innerHTML = `
+        <strong>${userNameMap[player2Uid]}</strong><br>レート: ${getRate(player2Uid)}
+      `;
 
       if (isHost) {
         document.getElementById("hostArea").style.display = "block";
@@ -159,7 +159,7 @@
           messagesDiv.innerHTML = "";
           querySnapshot.forEach((doc) => {
             const data = doc.data();
-            const user = userDataMap[data.uid]?.name || "名無し";
+            const user = userNameMap[data.uid] || "名無し";
             const msg = document.createElement("p");
             msg.innerText = user + ": " + data.text;
             messagesDiv.appendChild(msg);
@@ -168,33 +168,39 @@
     });
 
     async function updateRankings(winnerUid, loserUid) {
+      const usersRef = db.collection("users");
       const rankingsRef = db.collection("rankings").doc("amiibo").collection("players");
 
-      const winnerSnap = await rankingsRef.doc(winnerUid).get();
-      const loserSnap = await rankingsRef.doc(loserUid).get();
+      const winnerSnap = await usersRef.doc(winnerUid).get();
+      const loserSnap = await usersRef.doc(loserUid).get();
 
-      const winnerUser = userDataMap[winnerUid] || {};
-      const loserUser = userDataMap[loserUid] || {};
+      let winnerData = winnerSnap.data();
+      let loserData = loserSnap.data();
 
-      let winnerData = winnerSnap.exists ? winnerSnap.data() : {
-        name: winnerUser.name,
-        icon: winnerUser.icon,
-        character: winnerUser.character,
-        rate: winnerUser.rate
-      };
+      if (!winnerData || !loserData) {
+        alert("ユーザーデータの取得に失敗しました。");
+        return;
+      }
 
-      let loserData = loserSnap.exists ? loserSnap.data() : {
-        name: loserUser.name,
-        icon: loserUser.icon,
-        character: loserUser.character,
-        rate: loserUser.rate
-      };
+      winnerData.rate = (winnerData.rate || 1500) + 30;
+      loserData.rate = (loserData.rate || 1500) - 30;
 
-      winnerData.rate += 30;
-      loserData.rate -= 30;
+      await usersRef.doc(winnerUid).update({ rate: winnerData.rate });
+      await usersRef.doc(loserUid).update({ rate: loserData.rate });
 
-      await rankingsRef.doc(winnerUid).set(winnerData);
-      await rankingsRef.doc(loserUid).set(loserData);
+      await rankingsRef.doc(winnerUid).set({
+        name: winnerData.name,
+        icon: winnerData.icon || "",
+        character: winnerData.amiiboCharacter || "",
+        rate: winnerData.rate
+      });
+
+      await rankingsRef.doc(loserUid).set({
+        name: loserData.name,
+        icon: loserData.icon || "",
+        character: loserData.amiiboCharacter || "",
+        rate: loserData.rate
+      });
     }
 
     async function submitRoomCode() {
