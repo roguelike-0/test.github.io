@@ -3,188 +3,79 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>レート対戦マッチング</title>
+  <title>対戦画面</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
   <style>
     body {
       margin: 0;
-      padding: 0;
       font-family: sans-serif;
-      background: #111;
-      color: #eee;
+      background-color: #111;
+      color: #fff;
     }
-    .header {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      background: #222;
-      padding: 15px 20px;
-      font-size: 18px;
-      font-weight: bold;
-      z-index: 100;
+    .main-container {
       display: flex;
-      align-items: center;
-      border-bottom: 1px solid #333;
-    }
-    .menu-toggle {
-      font-size: 24px;
-      cursor: pointer;
-      margin-right: 10px;
+      min-height: 100vh;
     }
     .sidebar {
-      position: fixed;
-      top: 0;
-      left: -200px;
       width: 200px;
-      height: 100%;
-      background: #1c1c1c;
+      background-color: #222;
       padding: 20px;
       box-sizing: border-box;
-      transition: left 0.3s ease;
-      z-index: 101;
+      transition: transform 0.3s ease;
+      transform: translateX(0);
     }
-    .sidebar.active {
-      left: 0;
+    .sidebar.hidden {
+      transform: translateX(-220px);
     }
-    .overlay {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      z-index: 100;
-    }
-    .overlay.active {
-      display: block;
+    .sidebar h2 {
+      font-size: 16px;
+      margin-bottom: 10px;
     }
     .sidebar a {
       display: block;
       color: #fff;
       text-decoration: none;
-      margin-bottom: 10px;
-      font-size: 16px;
+      margin: 8px 0;
     }
-    .main-content {
-      padding: 90px 20px 40px 20px;
-    }
-    .container {
-      display: flex;
-      flex-direction: column;
-      width: 100%;
-      max-width: 600px;
-      margin: 0 auto;
-      gap: 20px;
-    }
-    .panel {
-      background: #1e1e1e;
+    .content {
+      flex: 1;
       padding: 20px;
-      border-radius: 8px;
+      box-sizing: border-box;
     }
-    button {
-      padding: 8px 16px;
-      font-size: 14px;
+    #toggleSidebar {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 10;
+      background-color: #333;
+      color: #fff;
       border: none;
-      border-radius: 4px;
-      background: #4CAF50;
-      color: white;
+      padding: 6px 10px;
       cursor: pointer;
-    }
-    .return-btn {
-      background: #2ecc71;
-      margin-left: 10px;
-    }
-    .room-box {
-      border: 1px solid #444;
-      padding: 10px;
-      margin-bottom: 10px;
-      border-radius: 6px;
-      font-size: 14px;
-    }
-    .room-header {
-      font-weight: bold;
-      margin-bottom: 6px;
-    }
-    .room-content {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .user-icon {
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      vertical-align: middle;
-      margin-right: 4px;
-    }
-    .player-info {
-      display: flex;
-      align-items: center;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      flex-shrink: 1;
-    }
-    .vs-text {
-      margin: 0 8px;
-    }
-    @media screen and (max-width: 480px) {
-      .room-content {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 6px;
-      }
-      .return-btn {
-        margin-left: 0;
-        align-self: flex-start;
-      }
     }
   </style>
 </head>
 <body>
-  <div class="sidebar" id="sidebar">
-    <a href="#" id="login-btn" onclick="loginWithGoogle()">👤 Googleログイン</a>
-    <a href="#" id="logout-btn" onclick="logout()" style="display:none;">🚪 ログアウト</a>
-    <div id="user-info" style="margin: 10px 0; font-size: 14px;"></div>
-    <a href="index.html">🏠 トップ</a>
-    <a href="mypage.html">📄 マイページ</a>
-    <a href="edit.html">✏️ プロフィール編集</a>
-  </div>
-  <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
-
-  <div class="header">
-    <span class="menu-toggle" onclick="toggleSidebar()">≡</span>
-    スマジョイ｜レート対戦
-  </div>
-
-  <div class="main-content" onclick="closeSidebar()">
-    <div class="container">
-      <div class="panel">
-        <h2>対戦待ち</h2>
-        <p id="waitingCount">現在 0 人が参加中</p>
-        <button onclick="startMatching()">対戦相手を探す</button>
-        <p id="matchingStatus"></p>
-      </div>
-      <div class="panel">
-        <h2>マッチング中の部屋一覧</h2>
-        <table id="roomList"><tbody></tbody></table>
-      </div>
+  <div class="main-container">
+    <div class="sidebar" id="sidebar">
+      <h2>スマジョイ</h2>
+      <a href="index.html">🏠 ホーム</a>
+      <a href="mypage.html">👤 マイページ</a>
+      <a href="rating_match_smartjoy_style.html">⚔️ レート対戦</a>
+      <a href="logout.html">🚪 ログアウト</a>
+    </div>
+    <div class="content">
+      <button id="toggleSidebar">☰</button>
+      <h1>ここに対戦処理が入ります</h1>
     </div>
   </div>
-
   <script>
-    function toggleSidebar() {
-      document.getElementById('sidebar').classList.toggle('active');
-      document.getElementById('overlay').classList.toggle('active');
-    }
-    function closeSidebar() {
-      document.getElementById('sidebar').classList.remove('active');
-      document.getElementById('overlay').classList.remove('active');
-    }
+    document.getElementById("toggleSidebar").addEventListener("click", function() {
+      document.getElementById("sidebar").classList.toggle("hidden");
+    });
   </script>
-
 </body>
 </html>
