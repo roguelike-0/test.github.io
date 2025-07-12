@@ -9,24 +9,23 @@
       background: #111;
       color: #fff;
       font-family: sans-serif;
-      margin: 0;
       padding: 20px;
+      margin: 0;
     }
     .container {
       display: flex;
       flex-direction: column;
-      gap: 20px;
-      max-width: 600px;
+      max-width: 800px;
       margin: 0 auto;
     }
     .panel {
       background: #1e1e1e;
       padding: 20px;
       border-radius: 8px;
-      width: 100%;
+      margin-bottom: 20px;
     }
     button {
-      padding: 8px 16px;
+      padding: 10px 20px;
       font-size: 14px;
       border: none;
       border-radius: 4px;
@@ -34,22 +33,35 @@
       color: white;
       cursor: pointer;
     }
-    .return-btn.hidden {
-      display: none;
-    }
-    table {
-      width: 100%;
-    }
-    td {
+    .room-box {
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 10px;
       font-size: 14px;
-      padding: 10px 0;
+      word-break: break-word;
+    }
+    .player-info {
+      display: inline-flex;
+      align-items: center;
+      margin: 0 5px;
     }
     .player-icon {
-      width: 28px;
-      height: 28px;
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
-      vertical-align: middle;
       margin-right: 6px;
+      background-color: #666;
+    }
+    .return-btn {
+      display: block;
+      margin: 10px auto 0;
+      background: #2ecc71;
+    }
+    @media (max-width: 600px) {
+      .container {
+        width: 95%;
+      }
     }
   </style>
 </head>
@@ -63,9 +75,10 @@
     </div>
     <div class="panel">
       <h2>マッチング中の部屋一覧</h2>
-      <table id="roomList"><tbody></tbody></table>
+      <div id="roomList"></div>
     </div>
   </div>
+
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
@@ -84,40 +97,45 @@
     let userIconMap = {};
     let myRoomNo = null;
 
-    async function fetchUserNames() {
+    async function fetchUserData() {
       const snapshot = await db.collection("users").get();
       snapshot.forEach(doc => {
         const data = doc.data();
         userNameMap[doc.id] = data.name || "名無し";
-        userRateMap[doc.id] = data.rate || "???";
-        userIconMap[doc.id] = data.icon || "https://placehold.jp/30x30.png";
+        userRateMap[doc.id] = data.rate || 0;
+        userIconMap[doc.id] = data.iconURL || ""; // デフォルトで空
       });
     }
 
+    function truncateName(name) {
+      return name.length > 5 ? name.slice(0, 5) + "…" : name;
+    }
+
     function renderRooms(rooms) {
-      const tbody = document.querySelector("#roomList tbody");
-      tbody.innerHTML = "";
+      const container = document.getElementById("roomList");
+      container.innerHTML = "";
       rooms.forEach((room, index) => {
-        const p1 = userNameMap[room.player1] || "名無し";
-        const p2 = userNameMap[room.player2] || "名無し";
-        const r1 = userRateMap[room.player1] || "???";
-        const r2 = userRateMap[room.player2] || "???";
-        const i1 = userIconMap[room.player1];
-        const i2 = userIconMap[room.player2];
-        const isSelf = (room.player1 === uid || room.player2 === uid);
-        const showButton = isSelf ? "" : "hidden";
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>
-            No.${index + 1}<br>
-            <img class="player-icon" src="${i1}">${p1}（${r1}）<br>
-            VS<br>
-            <img class="player-icon" src="${i2}">${p2}（${r2}）<br>
-            <button class="return-btn ${showButton}" onclick="returnToRoom('${room.id}')">部屋に戻る</button>
-          </td>
+        const p1 = room.player1 || "";
+        const p2 = room.player2 || "";
+        const name1 = truncateName(userNameMap[p1] || "名無し");
+        const name2 = truncateName(userNameMap[p2] || "名無し");
+        const rate1 = userRateMap[p1] || 0;
+        const rate2 = userRateMap[p2] || 0;
+        const icon1 = userIconMap[p1] || "https://via.placeholder.com/24";
+        const icon2 = userIconMap[p2] || "https://via.placeholder.com/24";
+
+        const div = document.createElement("div");
+        div.className = "room-box";
+        div.innerHTML = `
+          <div><strong>No.${index + 1}</strong></div>
+          <div class="player-info"><img class="player-icon" src="${icon1}">${name1} (${rate1})</div>
+          VS
+          <div class="player-info"><img class="player-icon" src="${icon2}">${name2} (${rate2})</div>
+          ${(p1 === uid || p2 === uid) ? `<button class="return-btn" onclick="returnToRoom('${room.id}')">部屋に戻る</button>` : ""}
         `;
-        tbody.appendChild(tr);
-        if (room.player1 === uid || room.player2 === uid) {
+        container.appendChild(div);
+
+        if (p1 === uid || p2 === uid) {
           myRoomNo = index + 1;
           localStorage.setItem("roomId", room.id);
         }
@@ -145,12 +163,11 @@
         return;
       }
       uid = user.uid;
-      await fetchUserNames();
+      await fetchUserData();
       db.collection("matching_rooms").onSnapshot(snapshot => {
         const rooms = [];
         snapshot.forEach(doc => {
-          const data = doc.data();
-          rooms.push({ id: doc.id, ...data });
+          rooms.push({ id: doc.id, ...doc.data() });
         });
         renderRooms(rooms);
         document.getElementById("waitingCount").innerText = `現在 ${rooms.length * 2} 人が参加中`;
