@@ -1,133 +1,228 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
   <title>対戦画面</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
   <style>
     body {
-      margin: 0;
-      font-family: sans-serif;
-      background-color: #111;
+      background: #111;
       color: #fff;
-    }
-    .main-container {
-      display: flex;
-      min-height: 100vh;
-    }
-    .sidebar {
-      width: 200px;
-      background-color: #222;
-      padding: 20px;
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
       box-sizing: border-box;
     }
-    .sidebar h2 {
-      font-size: 16px;
-      margin-bottom: 10px;
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: #222;
+      padding: 15px 20px;
+      font-size: 18px;
+      font-weight: bold;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid #333;
+    }
+    .menu-toggle {
+      font-size: 24px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: -200px;
+      width: 200px;
+      height: 100%;
+      background: #1c1c1c;
+      padding: 20px;
+      box-sizing: border-box;
+      transition: left 0.3s ease;
+      z-index: 101;
+    }
+    .sidebar.active {
+      left: 0;
+    }
+    .overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+    }
+    .overlay.active {
+      display: block;
     }
     .sidebar a {
       display: block;
       color: #fff;
       text-decoration: none;
-      margin: 8px 0;
+      margin-bottom: 10px;
+      font-size: 16px;
     }
-    .content {
-      flex: 1;
+    .main {
+      padding: 90px 20px 40px 20px;
+    }
+    .card {
+      background: #1e1e1e;
+      border-radius: 8px;
       padding: 20px;
-      box-sizing: border-box;
+      margin-bottom: 20px;
     }
-    #players {
+    .card h2 {
+      margin-top: 0;
+    }
+    .player-boxes {
       display: flex;
-      justify-content: space-between;
-      margin-bottom: 20px;
+      gap: 20px;
     }
-    #players > div {
-      width: 45%;
-      background: #1e1e1e;
-      padding: 10px;
-      border-radius: 8px;
+    .player-info {
+      flex: 1;
+      background: #2c2c2c;
+      border-radius: 6px;
+      padding: 10px 15px;
     }
-    #roomSection {
-      background: #1e1e1e;
-      padding: 10px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-    }
-    #chat {
-      margin-top: 20px;
-    }
-    #messages {
-      margin-top: 10px;
-      max-height: 150px;
-      overflow-y: auto;
-      background: #333;
-      padding: 10px;
-      border-radius: 8px;
+    .comment-box {
+      background: #2c2c2c;
+      border-radius: 6px;
+      padding: 15px;
     }
     input[type="text"] {
       padding: 6px;
       font-size: 14px;
-      width: 200px;
+      margin-right: 6px;
+      background: #000;
+      border: 1px solid #666;
+      color: #fff;
     }
     button {
       padding: 6px 12px;
       font-size: 14px;
+      background: #4CAF50;
+      color: #fff;
       border: none;
       border-radius: 4px;
-      background: #4CAF50;
-      color: white;
       cursor: pointer;
-      margin-left: 5px;
-    }
-    .disabled {
-      background-color: gray !important;
-      color: #fff;
-      cursor: not-allowed;
     }
   </style>
 </head>
 <body>
-<div class="main-container">
-  <div class="sidebar">
-    <h2>スマジョイ</h2>
-    <a href="index.html">🏠 ホーム</a>
-    <a href="mypage.html">👤 マイページ</a>
-    <a href="rating_match_smartjoy_style.html">⚔️ レート対戦</a>
-    <a href="logout.html">🚪 ログアウト</a>
+
+  <div class="sidebar" id="sidebar">
+    <a href="#" id="logout-btn" onclick="logout()">🚪 ログアウト</a>
+    <div id="user-info" style="margin: 10px 0; font-size: 14px;"></div>
+    <a href="index.html">🏠 トップ</a>
+    <a href="mypage.html">📄 マイページ</a>
+    <a href="edit.html">✏️ プロフィール編集</a>
   </div>
-  <div class="content">
-    <h1 id="title">対戦準備中...</h1>
-    <div id="players">
-      <div id="player1Info">Player1: 読み込み中...</div>
-      <div id="player2Info">Player2: 読み込み中...</div>
-    </div>
-    <div id="roomSection">
-      <div id="hostArea" style="display:none;">
-        <input type="text" id="roomCode" placeholder="部屋番号を入力">
-        <button onclick="submitRoomCode()">設定</button>
-      </div>
-      <div id="guestArea" style="display:none;">
-        <p>ホストが部屋番号を入力しています...</p>
-      </div>
-      <div id="roomDisplayArea" style="display:none;">
-        <p id="roomDisplay">部屋番号:</p>
+
+  <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <div class="header">
+    <span class="menu-toggle" onclick="toggleSidebar()">≡</span>
+    スマジョイ｜対戦画面
+  </div>
+
+  <div class="main" onclick="closeSidebar()">
+    <div class="card">
+      <h2>対戦準備中…</h2>
+      <div class="player-boxes">
+        <div class="player-info" id="player1Info">Loading...</div>
+        <div class="player-info" id="player2Info">Loading...</div>
       </div>
     </div>
-    <div id="resultButtons" style="display:none;">
-      <button id="winBtn" onclick="submitResult('win')">勝ち</button>
-      <button id="loseBtn" onclick="submitResult('lose')">負け</button>
+
+    <div class="card">
+      <input type="text" id="roomNoInput" placeholder="部屋番号を入力">
+      <button onclick="setRoomNo()">設定</button>
     </div>
-    <div id="chat">
+
+    <div class="card comment-box">
       <h3>コメント</h3>
-      <input type="text" id="chatInput" placeholder="コメントを入力">
-      <button onclick="submitComment()">書き込む</button>
-      <div id="messages"></div>
+      <input type="text" id="commentInput" placeholder="コメントを入力">
+      <button onclick="postComment()">書き込む</button>
     </div>
   </div>
-</div>
-<!-- Firebase logic script is assumed to be added below in a separate step or already embedded -->
+
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDMVAb0htcBm2Yv3uKpJ7Kmqyvhmr21b9o",
+      authDomain: "smajoy-8e047.firebaseapp.com",
+      projectId: "smajoy-8e047"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+    let uid = "";
+    let userNameMap = {};
+    let userRateMap = {};
+
+    function logout() {
+      auth.signOut().then(() => {
+        alert("ログアウトしました");
+        window.location.href = "index.html";
+      });
+    }
+
+    function toggleSidebar() {
+      document.getElementById("sidebar").classList.toggle("active");
+      document.getElementById("overlay").classList.toggle("active");
+    }
+
+    function closeSidebar() {
+      document.getElementById("sidebar").classList.remove("active");
+      document.getElementById("overlay").classList.remove("active");
+    }
+
+    function setRoomNo() {
+      const input = document.getElementById("roomNoInput");
+      localStorage.setItem("roomId", input.value);
+      location.reload();
+    }
+
+    function postComment() {
+      // 仮：コメント処理省略
+      alert("コメント送信: " + document.getElementById("commentInput").value);
+    }
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        alert("ログインしてください");
+        window.location.href = "index.html";
+        return;
+      }
+      uid = user.uid;
+      document.getElementById("user-info").innerText = user.displayName || "ログイン中";
+      const roomId = localStorage.getItem("roomId");
+      if (!roomId) return;
+      const doc = await db.collection("matching_rooms").doc(roomId).get();
+      const room = doc.data();
+      const player1 = room.player1;
+      const player2 = room.player2;
+
+      const users = await db.collection("users").get();
+      users.forEach(doc => {
+        const data = doc.data();
+        userNameMap[doc.id] = data.name || "名無し";
+        userRateMap[doc.id] = data.rate || "----";
+      });
+
+      document.getElementById("player1Info").innerText = `${userNameMap[player1] || "???"}
+レート: ${userRateMap[player1] || "---"}`;
+      document.getElementById("player2Info").innerText = `${userNameMap[player2] || "???"}
+レート: ${userRateMap[player2] || "---"}`;
+    });
+  </script>
 </body>
 </html>
