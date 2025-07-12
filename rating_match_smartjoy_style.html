@@ -9,23 +9,25 @@
       background: #111;
       color: #fff;
       font-family: sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
       padding: 20px;
-      margin: 0;
     }
     .container {
       display: flex;
       flex-direction: column;
-      max-width: 800px;
-      margin: 0 auto;
+      width: 100%;
+      max-width: 600px;
+      gap: 20px;
     }
     .panel {
       background: #1e1e1e;
       padding: 20px;
       border-radius: 8px;
-      margin-bottom: 20px;
     }
     button {
-      padding: 10px 20px;
+      padding: 8px 16px;
       font-size: 14px;
       border: none;
       border-radius: 4px;
@@ -33,35 +35,41 @@
       color: white;
       cursor: pointer;
     }
+    .return-btn {
+      background: #2ecc71;
+      margin-left: 10px;
+    }
     .room-box {
       border: 1px solid #444;
-      border-radius: 8px;
       padding: 10px;
       margin-bottom: 10px;
+      border-radius: 6px;
       font-size: 14px;
-      word-break: break-word;
     }
-    .player-info {
-      display: inline-flex;
+    .room-header {
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+    .room-content {
+      display: flex;
       align-items: center;
-      margin: 0 5px;
+      flex-wrap: wrap;
+      justify-content: space-between;
     }
-    .player-icon {
+    .user-icon {
       width: 24px;
       height: 24px;
       border-radius: 50%;
-      margin-right: 6px;
-      background-color: #666;
+      vertical-align: middle;
+      margin-right: 4px;
     }
-    .return-btn {
-      display: block;
-      margin: 10px auto 0;
-      background: #2ecc71;
-    }
-    @media (max-width: 600px) {
-      .container {
-        width: 95%;
-      }
+    .player-info {
+      display: flex;
+      align-items: center;
+      max-width: 40%;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
     }
   </style>
 </head>
@@ -75,10 +83,9 @@
     </div>
     <div class="panel">
       <h2>マッチング中の部屋一覧</h2>
-      <div id="roomList"></div>
+      <table id="roomList"><tbody></tbody></table>
     </div>
   </div>
-
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
@@ -93,49 +100,52 @@
     const auth = firebase.auth();
     let uid = "";
     let userNameMap = {};
-    let userRateMap = {};
     let userIconMap = {};
+    let userRateMap = {};
     let myRoomNo = null;
 
-    async function fetchUserData() {
+    async function fetchUserNames() {
       const snapshot = await db.collection("users").get();
       snapshot.forEach(doc => {
         const data = doc.data();
         userNameMap[doc.id] = data.name || "名無し";
-        userRateMap[doc.id] = data.rate || 0;
-        userIconMap[doc.id] = data.iconURL || ""; // デフォルトで空
+        userIconMap[doc.id] = data.icon || "https://via.placeholder.com/24";
+        userRateMap[doc.id] = data.rate || "----";
       });
     }
 
-    function truncateName(name) {
+    function truncate(name) {
       return name.length > 5 ? name.slice(0, 5) + "…" : name;
     }
 
     function renderRooms(rooms) {
-      const container = document.getElementById("roomList");
-      container.innerHTML = "";
+      const tbody = document.querySelector("#roomList tbody");
+      tbody.innerHTML = "";
       rooms.forEach((room, index) => {
-        const p1 = room.player1 || "";
-        const p2 = room.player2 || "";
-        const name1 = truncateName(userNameMap[p1] || "名無し");
-        const name2 = truncateName(userNameMap[p2] || "名無し");
-        const rate1 = userRateMap[p1] || 0;
-        const rate2 = userRateMap[p2] || 0;
-        const icon1 = userIconMap[p1] || "https://via.placeholder.com/24";
-        const icon2 = userIconMap[p2] || "https://via.placeholder.com/24";
-
-        const div = document.createElement("div");
-        div.className = "room-box";
-        div.innerHTML = `
-          <div><strong>No.${index + 1}</strong></div>
-          <div class="player-info"><img class="player-icon" src="${icon1}">${name1} (${rate1})</div>
-          VS
-          <div class="player-info"><img class="player-icon" src="${icon2}">${name2} (${rate2})</div>
-          ${(p1 === uid || p2 === uid) ? `<button class="return-btn" onclick="returnToRoom('${room.id}')">部屋に戻る</button>` : ""}
+        const p1 = room.player1;
+        const p2 = room.player2;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td colspan="5">
+            <div class="room-box">
+              <div class="room-header">No.${index + 1}</div>
+              <div class="room-content">
+                <div class="player-info">
+                  <img src="${userIconMap[p1]}" class="user-icon">
+                  ${truncate(userNameMap[p1] || "名無し")} (${userRateMap[p1]})
+                </div>
+                <div>VS</div>
+                <div class="player-info">
+                  <img src="${userIconMap[p2]}" class="user-icon">
+                  ${truncate(userNameMap[p2] || "名無し")} (${userRateMap[p2]})
+                </div>
+                ${(p1 === uid || p2 === uid) ? `<button class="return-btn" onclick="returnToRoom('${room.id}')">部屋に戻る</button>` : ""}
+              </div>
+            </div>
+          </td>
         `;
-        container.appendChild(div);
-
-        if (p1 === uid || p2 === uid) {
+        tbody.appendChild(tr);
+        if (room.player1 === uid || room.player2 === uid) {
           myRoomNo = index + 1;
           localStorage.setItem("roomId", room.id);
         }
@@ -163,11 +173,12 @@
         return;
       }
       uid = user.uid;
-      await fetchUserData();
+      await fetchUserNames();
       db.collection("matching_rooms").onSnapshot(snapshot => {
         const rooms = [];
         snapshot.forEach(doc => {
-          rooms.push({ id: doc.id, ...doc.data() });
+          const data = doc.data();
+          rooms.push({ id: doc.id, ...data });
         });
         renderRooms(rooms);
         document.getElementById("waitingCount").innerText = `現在 ${rooms.length * 2} 人が参加中`;
