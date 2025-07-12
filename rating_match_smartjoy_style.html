@@ -1,8 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
   <title>レート対戦マッチング</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
       background: #111;
@@ -11,11 +13,14 @@
       display: flex;
       justify-content: center;
       align-items: flex-start;
-      padding: 40px;
+      padding: 20px;
+      flex-wrap: wrap;
     }
     .container {
       display: flex;
-      width: 90%;
+      flex-direction: row;
+      flex-wrap: wrap;
+      width: 100%;
       max-width: 1000px;
       justify-content: space-between;
     }
@@ -24,6 +29,8 @@
       padding: 20px;
       border-radius: 8px;
       width: 48%;
+      min-width: 280px;
+      margin-bottom: 20px;
     }
     button {
       padding: 10px 20px;
@@ -36,47 +43,22 @@
     }
     table {
       width: 100%;
+      table-layout: fixed;
       margin-top: 10px;
     }
     th, td {
       padding: 6px 10px;
       text-align: left;
+      word-wrap: break-word;
     }
+    th:nth-child(1), td:nth-child(1) { width: 10%; }
+    th:nth-child(2), td:nth-child(2) { width: 25%; }
+    th:nth-child(3), td:nth-child(3) { width: 10%; text-align: center; }
+    th:nth-child(4), td:nth-child(4) { width: 25%; }
+    th:nth-child(5), td:nth-child(5) { width: 30%; text-align: right; }
     .return-btn {
       background: #2ecc71;
       margin-top: 6px;
-    }
-
-    @media screen and (max-width: 600px) {
-      body {
-        flex-direction: column;
-        padding: 20px;
-        align-items: center;
-      }
-
-      .container {
-        flex-direction: column;
-        align-items: center;
-      }
-
-      .panel {
-        width: 100%;
-        margin-bottom: 20px;
-      }
-
-      button {
-        font-size: 18px;
-        padding: 14px 24px;
-        width: 100%;
-      }
-
-      table {
-        font-size: 14px;
-      }
-
-      th, td {
-        padding: 8px;
-      }
     }
   </style>
 </head>
