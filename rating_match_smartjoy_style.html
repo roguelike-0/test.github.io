@@ -4,21 +4,22 @@
 <head>
   <meta charset="UTF-8" />
   <title>レート対戦マッチング</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-  body {
-  background: #111;
-  color: #fff;
-  font-family: sans-serif;
-  padding: 20px;
-  margin: 0;
-  width: 100%;
-  box-sizing: border-box;
-}
+    body {
+      background: #111;
+      color: #fff;
+      font-family: sans-serif;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+    }
     .container {
       display: flex;
       flex-direction: column;
       width: 100%;
       max-width: 600px;
+      margin: 0 auto;
       gap: 20px;
     }
     .panel {
@@ -50,13 +51,12 @@
       font-weight: bold;
       margin-bottom: 6px;
     }
-.room-content {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  justify-content: space-between;
-}
+    .room-content {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+    }
     .user-icon {
       width: 24px;
       height: 24px;
@@ -65,14 +65,27 @@
       margin-right: 4px;
     }
     .player-info {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  min-width: 0;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
-}
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex-shrink: 1;
+    }
+    .vs-text {
+      margin: 0 8px;
+    }
+    @media screen and (max-width: 480px) {
+      .room-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+      }
+      .return-btn {
+        margin-left: 0;
+        align-self: flex-start;
+      }
+    }
   </style>
 </head>
 <body>
@@ -136,7 +149,7 @@
                   <img src="${userIconMap[p1]}" class="user-icon">
                   ${truncate(userNameMap[p1] || "名無し")} (${userRateMap[p1]})
                 </div>
-                <div>VS</div>
+                <div class="vs-text">VS</div>
                 <div class="player-info">
                   <img src="${userIconMap[p2]}" class="user-icon">
                   ${truncate(userNameMap[p2] || "名無し")} (${userRateMap[p2]})
