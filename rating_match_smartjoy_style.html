@@ -81,7 +81,6 @@
     let uid = "";
     let userNameMap = {};
     let myRoomNo = null;
-    let myRoomId = null;
 
     async function fetchUserNames() {
       const snapshot = await db.collection("users").get();
@@ -93,25 +92,20 @@
     function renderRooms(rooms) {
       const tbody = document.querySelector("#roomList tbody");
       tbody.innerHTML = "";
-      myRoomNo = null;
-      myRoomId = null;
       rooms.forEach((room, index) => {
         const tr = document.createElement("tr");
         const p1 = userNameMap[room.player1] || "名無し";
         const p2 = userNameMap[room.player2] || "名無し";
-        const no = index + 1;
         tr.innerHTML = `
-          <td>No.${no}</td>
+          <td>No.${index + 1}</td>
           <td>${p1}</td>
           <td>VS</td>
           <td>${p2}</td>
           <td><button class="return-btn" onclick="returnToRoom('${room.id}')">部屋に戻る</button></td>
         `;
         tbody.appendChild(tr);
-
         if (room.player1 === uid || room.player2 === uid) {
-          myRoomNo = no;
-          myRoomId = room.id;
+          myRoomNo = index + 1;
           localStorage.setItem("roomId", room.id);
         }
       });
@@ -122,13 +116,12 @@
       location.href = "match_screen.html";
     }
 
-    function startMatching() {
-      const status = document.getElementById("matchingStatus");
+    async function startMatching() {
       if (myRoomNo !== null) {
         alert(`すでにマッチング中です。部屋No.${myRoomNo}に戻ってください。`);
         return;
       }
-      status.innerText = "対戦相手を探しています...";
+      document.getElementById("matchingStatus").innerText = "対戦相手を探しています...";
       location.href = "rating_match_smartjoy_style.html";
     }
 
