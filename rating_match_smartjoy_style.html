@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -11,9 +10,67 @@
       color: #fff;
       font-family: sans-serif;
       margin: 0;
-      padding: 20px;
+      padding: 0;
       box-sizing: border-box;
     }
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: #222;
+      padding: 15px 20px;
+      font-size: 18px;
+      font-weight: bold;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid #333;
+    }
+    .menu-toggle {
+      font-size: 24px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: -200px;
+      width: 200px;
+      height: 100%;
+      background: #1c1c1c;
+      padding: 20px;
+      box-sizing: border-box;
+      transition: left 0.3s ease;
+      z-index: 101;
+    }
+    .sidebar.active {
+      left: 0;
+    }
+    .overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+    }
+    .overlay.active {
+      display: block;
+    }
+    .sidebar a {
+      display: block;
+      color: #fff;
+      text-decoration: none;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+    .main-content {
+      padding: 90px 20px 40px 20px;
+    }
+
     .container {
       display: flex;
       flex-direction: column;
@@ -89,21 +146,46 @@
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="panel">
-      <h2>対戦待ち</h2>
-      <p id="waitingCount">現在 0 人が参加中</p>
-      <button onclick="startMatching()">対戦相手を探す</button>
-      <p id="matchingStatus"></p>
-    </div>
-    <div class="panel">
-      <h2>マッチング中の部屋一覧</h2>
-      <table id="roomList"><tbody></tbody></table>
+
+  <!-- サイドバー -->
+  <div class="sidebar" id="sidebar">
+    <a href="#" id="logout-btn" onclick="logout()">🚪 ログアウト</a>
+    <div id="user-info" style="margin: 10px 0; font-size: 14px;"></div>
+    <a href="index.html">🏠 トップ</a>
+    <a href="mypage.html">📄 マイページ</a>
+    <a href="edit.html">✏️ プロフィール編集</a>
+  </div>
+
+  <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <!-- ヘッダー -->
+  <div class="header">
+    <span class="menu-toggle" onclick="toggleSidebar()">≡</span>
+    スマジョイ｜マッチング
+  </div>
+
+  <!-- メイン -->
+  <div class="main-content" onclick="closeSidebar()">
+    <div class="container">
+      <div class="panel">
+        <h2>対戦待ち</h2>
+        <p id="waitingCount">現在 0 人が参加中</p>
+        <button onclick="startMatching()">対戦相手を探す</button>
+        <p id="matchingStatus"></p>
+      </div>
+      <div class="panel">
+        <h2>マッチング中の部屋一覧</h2>
+        <table id="roomList"><tbody></tbody></table>
+      </div>
     </div>
   </div>
+
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+  <!-- Firebase設定＆処理：元コード維持 -->
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyDMVAb0htcBm2Yv3uKpJ7Kmqyvhmr21b9o",
@@ -188,6 +270,10 @@
         return;
       }
       uid = user.uid;
+      document.getElementById("user-info").innerHTML = `
+        <img src="${user.photoURL}" style="width:24px; border-radius:50%;"> ${user.displayName}
+      `;
+      document.getElementById("logout-btn").style.display = "block";
       await fetchUserNames();
       db.collection("matching_rooms").onSnapshot(snapshot => {
         const rooms = [];
@@ -199,6 +285,23 @@
         document.getElementById("waitingCount").innerText = `現在 ${rooms.length * 2} 人が参加中`;
       });
     });
+
+    function logout() {
+      auth.signOut().then(() => {
+        alert("ログアウトしました");
+        window.location.href = "index.html";
+      });
+    }
+
+    function toggleSidebar() {
+      document.getElementById("sidebar").classList.toggle("active");
+      document.getElementById("overlay").classList.toggle("active");
+    }
+
+    function closeSidebar() {
+      document.getElementById("sidebar").classList.remove("active");
+      document.getElementById("overlay").classList.remove("active");
+    }
   </script>
 </body>
 </html>
