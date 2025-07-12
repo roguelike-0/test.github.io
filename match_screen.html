@@ -1,133 +1,94 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>対戦画面</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
   <style>
-    body {
-      margin: 0;
-      font-family: sans-serif;
-      background-color: #111;
-      color: #fff;
-    }
-    .main-container {
-      display: flex;
-      min-height: 100vh;
-    }
-    .sidebar {
-      width: 200px;
-      background-color: #222;
-      padding: 20px;
-      box-sizing: border-box;
-    }
-    .sidebar h2 {
-      font-size: 16px;
-      margin-bottom: 10px;
-    }
-    .sidebar a {
-      display: block;
-      color: #fff;
-      text-decoration: none;
-      margin: 8px 0;
-    }
-    .content {
-      flex: 1;
-      padding: 20px;
-      box-sizing: border-box;
-    }
-    #players {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 20px;
-    }
-    #players > div {
-      width: 45%;
-      background: #1e1e1e;
-      padding: 10px;
-      border-radius: 8px;
-    }
-    #roomSection {
-      background: #1e1e1e;
-      padding: 10px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-    }
-    #chat {
-      margin-top: 20px;
-    }
-    #messages {
-      margin-top: 10px;
-      max-height: 150px;
-      overflow-y: auto;
-      background: #333;
-      padding: 10px;
-      border-radius: 8px;
-    }
-    input[type="text"] {
-      padding: 6px;
-      font-size: 14px;
-      width: 200px;
-    }
-    button {
-      padding: 6px 12px;
-      font-size: 14px;
-      border: none;
-      border-radius: 4px;
-      background: #4CAF50;
-      color: white;
-      cursor: pointer;
-      margin-left: 5px;
-    }
-    .disabled {
-      background-color: gray !important;
-      color: #fff;
-      cursor: not-allowed;
-    }
+    body { background: #111; color: #fff; font-family: sans-serif; text-align: center; padding: 20px; }
+    input, button { margin: 5px; padding: 10px; font-size: 16px; }
+    .room-section { margin-top: 20px; }
   </style>
 </head>
 <body>
-<div class="main-container">
-  <div class="sidebar">
-    <h2>スマジョイ</h2>
-    <a href="index.html">🏠 ホーム</a>
-    <a href="mypage.html">👤 マイページ</a>
-    <a href="rating_match_smartjoy_style.html">⚔️ レート対戦</a>
-    <a href="logout.html">🚪 ログアウト</a>
-  </div>
-  <div class="content">
-    <h1 id="title">対戦準備中...</h1>
-    <div id="players">
-      <div id="player1Info">Player1: 読み込み中...</div>
-      <div id="player2Info">Player2: 読み込み中...</div>
+  <h1 id="statusTitle">対戦準備中...</h1>
+  <div class="room-section" id="roomSection" style="display:none;">
+    <div id="hostUI" style="display:none;">
+      <p>部屋番号を入力してください：</p>
+      <input id="roomInput" placeholder="例: 1234-ABCD" />
+      <button onclick="submitRoom()">設定</button>
     </div>
-    <div id="roomSection">
-      <div id="hostArea" style="display:none;">
-        <input type="text" id="roomCode" placeholder="部屋番号を入力">
-        <button onclick="submitRoomCode()">設定</button>
-      </div>
-      <div id="guestArea" style="display:none;">
-        <p>ホストが部屋番号を入力しています...</p>
-      </div>
-      <div id="roomDisplayArea" style="display:none;">
-        <p id="roomDisplay">部屋番号:</p>
-      </div>
-    </div>
-    <div id="resultButtons" style="display:none;">
-      <button id="winBtn" onclick="submitResult('win')">勝ち</button>
-      <button id="loseBtn" onclick="submitResult('lose')">負け</button>
-    </div>
-    <div id="chat">
-      <h3>コメント</h3>
-      <input type="text" id="chatInput" placeholder="コメントを入力">
-      <button onclick="submitComment()">書き込む</button>
-      <div id="messages"></div>
+    <div id="guestUI" style="display:none;">
+      <p>ホストが部屋番号を入力中...</p>
+      <p id="displayRoomNumber"></p>
     </div>
   </div>
-</div>
-<!-- Firebase logic script is assumed to be added below in a separate step or already embedded -->
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDMVAb0htcBm2Yv3uKpJ7Kmqyvhmr21b9o",
+      authDomain: "smajoy-8e047.firebaseapp.com",
+      projectId: "smajoy-8e047",
+      storageBucket: "smajoy-8e047.appspot.com",
+      messagingSenderId: "878614139782",
+      appId: "1:878614139782:web:a168073265950c74d71207"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+
+    let uid = "";
+    let roomId = localStorage.getItem("roomId");
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user || !roomId) {
+        alert("ログインまたはマッチ情報がありません");
+        location.href = "index.html";
+        return;
+      }
+      uid = user.uid;
+      const roomDoc = await db.collection("matching_rooms").doc(roomId).get();
+      if (!roomDoc.exists) {
+        alert("対戦部屋が見つかりません");
+        location.href = "index.html";
+        return;
+      }
+      const data = roomDoc.data();
+      const isHost = data.player1 === uid;
+      document.getElementById("roomSection").style.display = "block";
+      if (isHost) {
+        document.getElementById("hostUI").style.display = "block";
+        document.getElementById("statusTitle").innerText = "あなたがホストです";
+      } else {
+        document.getElementById("guestUI").style.display = "block";
+        document.getElementById("statusTitle").innerText = "対戦待機中...";
+        db.collection("matching_rooms").doc(roomId).onSnapshot((snap) => {
+          const d = snap.data();
+          if (d.roomNumber) {
+            document.getElementById("displayRoomNumber").innerText = "部屋番号: " + d.roomNumber;
+            document.getElementById("statusTitle").innerText = "対戦中";
+          }
+        });
+      }
+    });
+
+    async function submitRoom() {
+      const roomNumber = document.getElementById("roomInput").value.trim();
+      if (!roomNumber) return alert("部屋番号を入力してください");
+      const confirmed = confirm("部屋番号は「" + roomNumber + "」でよろしいですか？");
+      if (confirmed) {
+        await db.collection("matching_rooms").doc(roomId).update({
+          roomNumber: roomNumber
+        });
+        alert("部屋番号を設定しました");
+        document.getElementById("statusTitle").innerText = "対戦中";
+        document.getElementById("hostUI").style.display = "none";
+        document.getElementById("displayRoomNumber").innerText = "部屋番号: " + roomNumber;
+        document.getElementById("guestUI").style.display = "block";
+      }
+    }
+  </script>
 </body>
 </html>
