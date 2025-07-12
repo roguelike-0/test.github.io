@@ -1,56 +1,56 @@
 
-<!-- HTML内容は実際のUIとマッチングロジックに基づき修正 -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
   <title>レート対戦</title>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
   <style>
     body {
       background-color: #111;
-      color: white;
+      color: #fff;
       font-family: sans-serif;
       display: flex;
-      flex-direction: row;
       justify-content: space-around;
-      padding: 20px;
+      padding: 40px;
     }
-    #left, #right {
+    .section {
       width: 45%;
     }
     button {
-      padding: 10px;
+      padding: 10px 20px;
       font-size: 16px;
+      margin-bottom: 20px;
     }
     .room-box {
       background: #222;
-      padding: 10px;
-      border-radius: 6px;
+      padding: 15px;
       margin-bottom: 10px;
+      border-radius: 8px;
     }
     .room-box button {
       background-color: #28a745;
       color: white;
       border: none;
-      padding: 5px 10px;
+      padding: 6px 12px;
       cursor: pointer;
+      margin-top: 5px;
     }
   </style>
 </head>
 <body>
-  <div id="left">
-    <h2>レート対戦</h2>
-    <button onclick="startMatching()">対戦相手を探す</button>
-    <p id="waitingCount">現在 0 人が待機中です</p>
+  <div class="section">
+    <button onclick="findOpponent()">対戦相手を探す</button>
+    <p id="waitingCount">現在0人が待機中です</p>
   </div>
-  <div id="right">
-    <h3>マッチング中の部屋一覧</h3>
+
+  <div class="section">
+    <h2>マッチング中の部屋一覧</h2>
     <div id="roomList"></div>
   </div>
 
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyDMVAb0htcBm2Yv3uKpJ7Kmqyvhmr21b9o",
@@ -60,7 +60,8 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
-    let uid = "";
+
+    let uid = "", matchedRoomId = "";
 
     auth.onAuthStateChanged(async (user) => {
       if (!user) {
@@ -68,63 +69,92 @@
         window.location.href = "index.html";
         return;
       }
+
       uid = user.uid;
-      loadRooms();
+      checkWaitingCount();
+      listRooms();
     });
 
-    async function loadRooms() {
-      const snapshot = await db.collection("matching_rooms").get();
+    async function checkWaitingCount() {
+      const snap = await db.collection("matching_rooms").get();
+      const roomCount = snap.size;
+      document.getElementById("waitingCount").innerText = `現在${roomCount * 2}人が待機中です`;
+    }
+
+    async function listRooms() {
+      const snap = await db.collection("matching_rooms").get();
       const roomList = document.getElementById("roomList");
       roomList.innerHTML = "";
       let count = 1;
-      let alreadyMatchedRoomId = null;
 
-      snapshot.forEach(async (doc) => {
+      snap.forEach((doc) => {
         const data = doc.data();
-        if (data.player1 && data.player2) {
-          const player1Name = await getUserName(data.player1);
-          const player2Name = await getUserName(data.player2);
-          const div = document.createElement("div");
-          div.className = "room-box";
-          div.innerHTML = `No.${count} ${player1Name} VS ${player2Name}`;
-          if (data.player1 === uid || data.player2 === uid) {
-            const btn = document.createElement("button");
-            btn.innerText = "部屋に戻る";
-            btn.onclick = () => {
-              localStorage.setItem("roomId", doc.id);
-              window.location.href = "match_screen.html";
-            };
-            div.appendChild(document.createElement("br"));
-            div.appendChild(btn);
-            alreadyMatchedRoomId = count;
-          }
-          roomList.appendChild(div);
-          count++;
+        const id = doc.id;
+        const name1 = data.player1Name || "プレイヤー1";
+        const name2 = data.player2Name || "プレイヤー2";
+
+        if (data.player1 === uid || data.player2 === uid) {
+          matchedRoomId = id;
         }
-      });
 
-      const waitSnapshot = await db.collection("waiting_users").doc("singleton").get();
-      let waiting = waitSnapshot.exists ? 1 : 0;
-      document.getElementById("waitingCount").innerText = `現在 ${waiting} 人が待機中です`;
-    }
-
-    async function getUserName(uid) {
-      const snap = await db.collection("users").doc(uid).get();
-      return snap.exists ? snap.data().name || "名無し" : "名無し";
-    }
-
-    async function startMatching() {
-      const snapshot = await db.collection("matching_rooms").get();
-      let count = 1;
-      for (const doc of snapshot.docs) {
-        const data = doc.data();
-        if ((data.player1 === uid || data.player2 === uid) && data.player1 && data.player2) {
-          alert(`部屋No.${count}で対戦中です。部屋に戻ってください。`);
-          return;
-        }
+        const div = document.createElement("div");
+        div.className = "room-box";
+        div.innerHTML = `No.${count}: ${name1} VS ${name2} <br>`;
+        const btn = document.createElement("button");
+        btn.innerText = "部屋に戻る";
+        btn.onclick = () => {
+          localStorage.setItem("roomId", id);
+          window.location.href = "match_screen.html";
+        };
+        div.appendChild(btn);
+        roomList.appendChild(div);
         count++;
+      });
+    }
+
+    async function findOpponent() {
+      if (matchedRoomId) {
+        alert(`部屋No.${matchedRoomId}で対戦中です。部屋に戻ってください。`);
+        return;
       }
-      window.location.href = "rating_match_smartjoy_style.html";
+
+      const waitingRef = db.collection("waiting_users").doc("singleton");
+      const roomRef = db.collection("matching_rooms");
+
+      const doc = await waitingRef.get();
+
+      if (!doc.exists || doc.data().uid === uid) {
+        await waitingRef.set({ uid });
+
+        roomRef.where("player1", "==", uid).onSnapshot((snapshot) => {
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            if (data.player2) {
+              localStorage.setItem("roomId", doc.id);
+              waitingRef.delete();
+              window.location.href = "match_screen.html";
+            }
+          });
+        });
+      } else {
+        const opponentUid = doc.data().uid;
+        const roomId = `${opponentUid}_${uid}_${Date.now()}`;
+        const users = await db.collection("users").get();
+        let nameMap = {};
+        users.forEach(doc => nameMap[doc.id] = doc.data().name || "名無し");
+
+        await roomRef.doc(roomId).set({
+          player1: opponentUid,
+          player2: uid,
+          player1Name: nameMap[opponentUid],
+          player2Name: nameMap[uid],
+          createdAt: Date.now()
+        });
+
+        await waitingRef.delete();
+        localStorage.setItem("roomId", roomId);
+        window.location.href = "match_screen.html";
+      }
     }
   </script>
 </body>
