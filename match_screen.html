@@ -5,9 +5,6 @@
   <meta charset="UTF-8" />
   <title>対戦画面</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
   <style>
     body {
       background: #111;
@@ -71,61 +68,54 @@
       margin-bottom: 10px;
       font-size: 16px;
     }
-    .main-content {
+    .main {
       padding: 90px 20px 40px 20px;
     }
-    .panel {
+    .card {
       background: #1e1e1e;
-      padding: 20px;
       border-radius: 8px;
+      padding: 20px;
       margin-bottom: 20px;
     }
-    #players {
+    .card h2 {
+      margin-top: 0;
+    }
+    .player-boxes {
       display: flex;
-      justify-content: space-between;
       gap: 20px;
     }
-    #players > div {
-      background: #2c2c2c;
-      padding: 10px;
-      border-radius: 8px;
+    .player-info {
       flex: 1;
+      background: #2c2c2c;
+      border-radius: 6px;
+      padding: 10px 15px;
     }
-    input, button {
-      padding: 8px 12px;
-      margin: 5px 0;
-      border-radius: 4px;
-      border: none;
+    .comment-box {
+      background: #2c2c2c;
+      border-radius: 6px;
+      padding: 15px;
+    }
+    input[type="text"] {
+      padding: 6px;
       font-size: 14px;
-    }
-    input {
-      width: 200px;
+      margin-right: 6px;
+      background: #000;
+      border: 1px solid #666;
+      color: #fff;
     }
     button {
+      padding: 6px 12px;
+      font-size: 14px;
       background: #4CAF50;
-      color: white;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
       cursor: pointer;
-    }
-    #chat input {
-      width: 70%;
-    }
-    #messages {
-      max-height: 150px;
-      overflow-y: auto;
-      background: #333;
-      padding: 10px;
-      border-radius: 8px;
-      margin-top: 10px;
-    }
-    .disabled {
-      background-color: gray !important;
-      cursor: not-allowed;
     }
   </style>
 </head>
 <body>
 
-  <!-- サイドバー -->
   <div class="sidebar" id="sidebar">
     <a href="#" id="logout-btn" onclick="logout()">🚪 ログアウト</a>
     <div id="user-info" style="margin: 10px 0; font-size: 14px;"></div>
@@ -133,64 +123,106 @@
     <a href="mypage.html">📄 マイページ</a>
     <a href="edit.html">✏️ プロフィール編集</a>
   </div>
+
   <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 
-  <!-- ヘッダー -->
   <div class="header">
     <span class="menu-toggle" onclick="toggleSidebar()">≡</span>
     スマジョイ｜対戦画面
   </div>
 
-  <!-- メイン -->
-  <div class="main-content" onclick="closeSidebar()">
-    <h1 id="title">対戦準備中...</h1>
-    <div id="players" class="panel">
-      <div id="player1Info">Player1: 読み込み中...</div>
-      <div id="player2Info">Player2: 読み込み中...</div>
-    </div>
-
-    <div class="panel">
-      <div id="hostArea" style="display:none;">
-        <input type="text" id="roomCode" placeholder="部屋番号を入力">
-        <button onclick="submitRoomCode()">設定</button>
-      </div>
-      <div id="guestArea" style="display:none;">
-        <p>ホストが部屋番号を入力しています...</p>
-      </div>
-      <div id="roomDisplayArea" style="display:none;">
-        <p id="roomDisplay">部屋番号:</p>
+  <div class="main" onclick="closeSidebar()">
+    <div class="card">
+      <h2>対戦準備中…</h2>
+      <div class="player-boxes">
+        <div class="player-info" id="player1Info">Loading...</div>
+        <div class="player-info" id="player2Info">Loading...</div>
       </div>
     </div>
 
-    <div id="resultButtons" class="panel" style="display:none;">
-      <button id="winBtn" onclick="submitResult('win')">勝ち</button>
-      <button id="loseBtn" onclick="submitResult('lose')">負け</button>
+    <div class="card">
+      <input type="text" id="roomNoInput" placeholder="部屋番号を入力">
+      <button onclick="setRoomNo()">設定</button>
     </div>
 
-    <div id="chat" class="panel">
+    <div class="card comment-box">
       <h3>コメント</h3>
-      <input type="text" id="chatInput" placeholder="コメントを入力">
-      <button onclick="submitComment()">書き込む</button>
-      <div id="messages"></div>
+      <input type="text" id="commentInput" placeholder="コメントを入力">
+      <button onclick="postComment()">書き込む</button>
     </div>
   </div>
 
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
   <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDMVAb0htcBm2Yv3uKpJ7Kmqyvhmr21b9o",
+      authDomain: "smajoy-8e047.firebaseapp.com",
+      projectId: "smajoy-8e047"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+    let uid = "";
+    let userNameMap = {};
+    let userRateMap = {};
+
+    function logout() {
+      auth.signOut().then(() => {
+        alert("ログアウトしました");
+        window.location.href = "index.html";
+      });
+    }
+
     function toggleSidebar() {
       document.getElementById("sidebar").classList.toggle("active");
       document.getElementById("overlay").classList.toggle("active");
     }
+
     function closeSidebar() {
       document.getElementById("sidebar").classList.remove("active");
       document.getElementById("overlay").classList.remove("active");
     }
-    function logout() {
-      firebase.auth().signOut().then(() => {
-        alert("ログアウトしました");
-        location.href = "index.html";
-      });
-    }
-  </script>
 
+    function setRoomNo() {
+      const input = document.getElementById("roomNoInput");
+      localStorage.setItem("roomId", input.value);
+      location.reload();
+    }
+
+    function postComment() {
+      // 仮：コメント処理省略
+      alert("コメント送信: " + document.getElementById("commentInput").value);
+    }
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        alert("ログインしてください");
+        window.location.href = "index.html";
+        return;
+      }
+      uid = user.uid;
+      document.getElementById("user-info").innerText = user.displayName || "ログイン中";
+      const roomId = localStorage.getItem("roomId");
+      if (!roomId) return;
+      const doc = await db.collection("matching_rooms").doc(roomId).get();
+      const room = doc.data();
+      const player1 = room.player1;
+      const player2 = room.player2;
+
+      const users = await db.collection("users").get();
+      users.forEach(doc => {
+        const data = doc.data();
+        userNameMap[doc.id] = data.name || "名無し";
+        userRateMap[doc.id] = data.rate || "----";
+      });
+
+      document.getElementById("player1Info").innerText = `${userNameMap[player1] || "???"}
+レート: ${userRateMap[player1] || "---"}`;
+      document.getElementById("player2Info").innerText = `${userNameMap[player2] || "???"}
+レート: ${userRateMap[player2] || "---"}`;
+    });
+  </script>
 </body>
 </html>
