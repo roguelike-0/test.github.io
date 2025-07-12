@@ -3,15 +3,16 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
+  <title>レート対戦マッチング</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>スマジョイ｜レート対戦</title>
   <style>
     body {
+      background: #111;
+      color: #fff;
+      font-family: sans-serif;
       margin: 0;
       padding: 0;
-      font-family: sans-serif;
-      background: #111;
-      color: #eee;
+      box-sizing: border-box;
     }
     .header {
       position: fixed;
@@ -67,51 +68,114 @@
       margin-bottom: 10px;
       font-size: 16px;
     }
-    .main-content {
-      margin-top: 70px;
+    .container {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      max-width: 600px;
+      margin: 90px auto 0;
+      gap: 20px;
       padding: 20px;
     }
-    iframe {
-      width: 100%;
-      height: 100vh;
+    .panel {
+      background: #1e1e1e;
+      padding: 20px;
+      border-radius: 8px;
+    }
+    button {
+      padding: 8px 16px;
+      font-size: 14px;
       border: none;
+      border-radius: 4px;
+      background: #4CAF50;
+      color: white;
+      cursor: pointer;
+    }
+    .return-btn {
+      background: #2ecc71;
+      margin-left: 10px;
+    }
+    .room-box {
+      border: 1px solid #444;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .room-header {
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+    .room-content {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .user-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      vertical-align: middle;
+      margin-right: 4px;
+    }
+    .player-info {
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex-shrink: 1;
+    }
+    .vs-text {
+      margin: 0 8px;
+    }
+    @media screen and (max-width: 480px) {
+      .room-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+      }
+      .return-btn {
+        margin-left: 0;
+        align-self: flex-start;
+      }
     }
   </style>
 </head>
 <body>
   <div class="sidebar" id="sidebar">
-    <a href="#" id="login-btn" onclick="loginWithGoogle()">👤 Googleログイン</a>
-    <a href="#" id="logout-btn" onclick="logout()" style="display:none;">🚪 ログアウト</a>
+    <a href="#" onclick="loginWithGoogle()">👤 Googleログイン</a>
+    <a href="#" onclick="logout()">🚪 ログアウト</a>
     <a href="index.html">🏠 トップ</a>
     <a href="mypage.html">📄 マイページ</a>
     <a href="edit.html">✏️ プロフィール編集</a>
   </div>
-
   <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
-
   <div class="header">
     <span class="menu-toggle" onclick="toggleSidebar()">≡</span>
     スマジョイ｜レート対戦
   </div>
-
-  <div class="main-content" onclick="closeSidebar()">
-    <iframe src="original_rating_match_content.html"></iframe>
+  <div class="container" onclick="closeSidebar()">
+    <div class="panel">
+      <h2>対戦待ち</h2>
+      <p id="waitingCount">現在 0 人が参加中</p>
+      <button onclick="startMatching()">対戦相手を探す</button>
+      <p id="matchingStatus"></p>
+    </div>
+    <div class="panel">
+      <h2>マッチング中の部屋一覧</h2>
+      <table id="roomList"><tbody></tbody></table>
+    </div>
   </div>
-
   <script>
     function toggleSidebar() {
-      document.getElementById('sidebar').classList.toggle('active');
-      document.getElementById('overlay').classList.toggle('active');
+      document.getElementById("sidebar").classList.toggle("active");
+      document.getElementById("overlay").classList.toggle("active");
     }
     function closeSidebar() {
-      document.getElementById('sidebar').classList.remove('active');
-      document.getElementById('overlay').classList.remove('active');
-    }
-    function loginWithGoogle() {
-      alert("Googleログイン処理は後ほど実装");
-    }
-    function logout() {
-      alert("ログアウト処理は後ほど実装");
+      document.getElementById("sidebar").classList.remove("active");
+      document.getElementById("overlay").classList.remove("active");
     }
   </script>
 </body>
