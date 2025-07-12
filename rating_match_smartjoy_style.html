@@ -73,8 +73,11 @@
 
     async function loadRooms() {
       const snapshot = await db.collection("matching_rooms").get();
-      const count = snapshot.size * 2;
-      document.getElementById("participantsCount").innerText = `現在 ${count}人が参加中`;
+      const activeRooms = snapshot.docs.filter(doc => {
+        const data = doc.data();
+        return data.player1 && data.player2;
+      });
+      document.getElementById("participantsCount").innerText = `現在 ${snapshot.size * 2}人が参加中`;
 
       const list = document.getElementById("roomList");
       list.innerHTML = "";
@@ -84,40 +87,55 @@
         const data = doc.data();
         const roomId = doc.id;
 
-        // 10分以上操作なしなら削除
         if (data.lastUpdated && now - data.lastUpdated.toMillis() > 10 * 60 * 1000) {
           db.collection("matching_rooms").doc(roomId).delete();
           return;
         }
 
-        const div = document.createElement("div");
-        div.className = "room-entry";
-        const player1 = data.player1Name || "不明";
-        const player2 = data.player2Name || "待機中";
-        div.innerHTML = `
-          <strong>部屋ID:</strong> ${roomId}<br>
-          ${player1} vs ${player2}<br>
-          <button onclick="rejoinRoom('${roomId}')">この部屋に戻る</button>
-        `;
-        list.appendChild(div);
+        if (data.player1 && data.player2) {
+          const div = document.createElement("div");
+          div.className = "room-entry";
+          const player1 = data.player1Name || "不明";
+          const player2 = data.player2Name || "不明";
+          div.innerHTML = `
+            <strong>部屋ID:</strong> ${roomId}<br>
+            ${player1} VS ${player2}<br>
+            <button onclick="rejoinRoom('${roomId}')">この部屋に戻る</button>
+          `;
+          list.appendChild(div);
+        }
       });
     }
 
     async function startMatching() {
-      // 新しい部屋作成
       const user = auth.currentUser;
       const userDoc = await db.collection("users").doc(user.uid).get();
       const name = userDoc.data().name || "名無し";
 
-      const newRoom = await db.collection("matching_rooms").add({
-        player1: user.uid,
-        player1Name: name,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-      });
-
-      localStorage.setItem("roomId", newRoom.id);
-      location.href = "match_screen.html";
+      // すでに待機しているプレイヤーがいるか探す
+      const snapshot = await db.collection("matching_rooms").where("player2", "==", null).get();
+      if (!snapshot.empty) {
+        const roomDoc = snapshot.docs[0];
+        await db.collection("matching_rooms").doc(roomDoc.id).update({
+          player2: user.uid,
+          player2Name: name,
+          lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        localStorage.setItem("roomId", roomDoc.id);
+        location.href = "match_screen.html";
+      } else {
+        // 自分が最初のプレイヤーとして部屋作成
+        const newRoom = await db.collection("matching_rooms").add({
+          player1: user.uid,
+          player1Name: name,
+          player2: null,
+          player2Name: null,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        localStorage.setItem("roomId", newRoom.id);
+        location.href = "match_screen.html";
+      }
     }
 
     function rejoinRoom(roomId) {
@@ -125,7 +143,6 @@
       location.href = "match_screen.html";
     }
 
-    // 定期更新
     setInterval(loadRooms, 15000);
   </script>
 </body>
