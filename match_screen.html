@@ -167,41 +167,44 @@
         });
     });
 
-    async function updateRankings(winnerUid, loserUid) {
-      const usersRef = db.collection("users");
-      const rankingsRef = db.collection("rankings").doc("amiibo").collection("players");
+   async function updateRankings(winnerUid, loserUid) {
+  const usersRef = db.collection("users");
+  const rankingsRef = db.collection("rankings").doc("amiibo").collection("players");
 
-      const winnerSnap = await usersRef.doc(winnerUid).get();
-      const loserSnap = await usersRef.doc(loserUid).get();
+  const winnerUserSnap = await usersRef.doc(winnerUid).get();
+  const loserUserSnap = await usersRef.doc(loserUid).get();
 
-      let winnerData = winnerSnap.data();
-      let loserData = loserSnap.data();
+  const winnerUser = winnerUserSnap.data();
+  const loserUser = loserUserSnap.data();
 
-      if (!winnerData || !loserData) {
-        alert("ユーザーデータの取得に失敗しました。");
-        return;
-      }
+  // デフォルトレート
+  let winnerRate = winnerUser?.rate ?? 1500;
+  let loserRate = loserUser?.rate ?? 1500;
 
-      winnerData.rate = (winnerData.rate || 1500) + 30;
-      loserData.rate = (loserData.rate || 1500) - 30;
+  // レート加減
+  winnerRate += 30;
+  loserRate -= 30;
 
-      await usersRef.doc(winnerUid).update({ rate: winnerData.rate });
-      await usersRef.doc(loserUid).update({ rate: loserData.rate });
+  // users 側にも反映
+  await usersRef.doc(winnerUid).update({ rate: winnerRate });
+  await usersRef.doc(loserUid).update({ rate: loserRate });
 
-      await rankingsRef.doc(winnerUid).set({
-        name: winnerData.name,
-        icon: winnerData.icon || "",
-        character: winnerData.amiiboCharacter || "",
-        rate: winnerData.rate
-      });
+  // rankings に登録（なければ新規追加）
+  await rankingsRef.doc(winnerUid).set({
+    name: winnerUser.name || "名無し",
+    icon: winnerUser.icon || "",
+    character: winnerUser.amiiboCharacter || "",
+    rate: winnerRate
+  });
 
-      await rankingsRef.doc(loserUid).set({
-        name: loserData.name,
-        icon: loserData.icon || "",
-        character: loserData.amiiboCharacter || "",
-        rate: loserData.rate
-      });
-    }
+  await rankingsRef.doc(loserUid).set({
+    name: loserUser.name || "名無し",
+    icon: loserUser.icon || "",
+    character: loserUser.amiiboCharacter || "",
+    rate: loserRate
+  });
+}
+
 
     async function submitRoomCode() {
       const code = document.getElementById("roomCode").value;
