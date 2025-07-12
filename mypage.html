@@ -162,53 +162,48 @@
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
 
-    // ログイン処理
     window.loginWithGoogle = async () => {
       try {
         const result = await signInWithPopup(auth, provider);
-        alert(ようこそ、${result.user.displayName} さん！);
+        alert(`ようこそ、${result.user.displayName} さん！`);
       } catch (error) {
         alert("ログインに失敗しました。");
         console.error(error);
       }
     };
 
-    // ログアウト処理
     window.logout = () => {
       signOut(auth).then(() => {
         alert("ログアウトしました");
       });
     };
 
-    // ログイン状態監視＋マイページ表示
     onAuthStateChanged(auth, async (user) => {
-  const loginBtn = document.getElementById("login-btn");
-  const logoutBtn = document.getElementById("logout-btn");
-  const userInfo = document.getElementById("user-info");
+      const loginBtn = document.getElementById("login-btn");
+      const logoutBtn = document.getElementById("logout-btn");
+      const userInfo = document.getElementById("user-info");
 
-  if (user) {
-    loginBtn.style.display = "none";
-    logoutBtn.style.display = "block";
-    userInfo.innerHTML = <img src="${user.photoURL}" style="width:24px; border-radius:50%;"> ${user.displayName};
-  
-    const ref = doc(db, "users", user.uid);
-    const snap = await getDoc(ref);
-    const data = snap.exists() ? snap.data() : {};
+      if (user) {
+        loginBtn.style.display = "none";
+        logoutBtn.style.display = "block";
+        userInfo.innerHTML = `<img src="${user.photoURL}" style="width:24px; border-radius:50%;"> ${user.displayName}`;
 
-    const imageUrl = data.icon || user.photoURL || '';
-    console.log("表示する画像URL:", imageUrl);
+        const ref = doc(db, "users", user.uid);
+        const snap = await getDoc(ref);
+        const data = snap.exists() ? snap.data() : {};
 
-    document.getElementById("profile-display").innerHTML = 
-      <p><img src="${imageUrl}" alt="アイコン画像" width="100"></p>
-      <p><strong>プレイヤーネーム：</strong>${data.name || user.displayName || "未設定"}</p>
-      <p><strong>スピリッツ使用キャラ：</strong>${data.spiritsCharacter || "未設定"}</p>
-      <p><strong>amiibo使用キャラ：</strong>${data.amiiboCharacter || "未設定"}</p>
-      <p><strong>コメント：</strong>${data.comment || "未設定"}</p>      
-    ;
-  } else {
-    location.href = "index.html";
-  }
-});
-
+        const imageUrl = data.icon || user.photoURL || '';
+        document.getElementById("profile-display").innerHTML = `
+          <p><img src="${imageUrl}" alt="アイコン画像" width="100"></p>
+          <p><strong>プレイヤーネーム：</strong>${data.name || user.displayName || "未設定"}</p>
+          <p><strong>スピリッツ使用キャラ：</strong>${data.spiritsCharacter || "未設定"}</p>
+          <p><strong>amiibo使用キャラ：</strong>${data.amiiboCharacter || "未設定"}</p>
+          <p><strong>コメント：</strong>${data.comment || "未設定"}</p>
+        `;
+      } else {
+        location.href = "index.html";
+      }
+    });
   </script>
 </body>
+</html>
