@@ -3,8 +3,8 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>レート対戦マッチング</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>スマジョイ｜レート対戦</title>
   <style>
     body {
       margin: 0;
@@ -68,16 +68,20 @@
       font-size: 16px;
     }
     .main-content {
-      padding: 90px 20px 40px 20px;
+      margin-top: 70px;
+      padding: 20px;
+    }
+    iframe {
+      width: 100%;
+      height: 100vh;
+      border: none;
     }
   </style>
 </head>
 <body>
-
   <div class="sidebar" id="sidebar">
     <a href="#" id="login-btn" onclick="loginWithGoogle()">👤 Googleログイン</a>
     <a href="#" id="logout-btn" onclick="logout()" style="display:none;">🚪 ログアウト</a>
-    <div id="user-info" style="margin: 10px 0; font-size: 14px;"></div>
     <a href="index.html">🏠 トップ</a>
     <a href="mypage.html">📄 マイページ</a>
     <a href="edit.html">✏️ プロフィール編集</a>
@@ -91,7 +95,7 @@
   </div>
 
   <div class="main-content" onclick="closeSidebar()">
-    <iframe src="rating_match_smartjoy_style.html" width="100%" height="1000px" frameborder="0" style="border:none;"></iframe>
+    <iframe src="original_rating_match_content.html"></iframe>
   </div>
 
   <script>
@@ -102,6 +106,12 @@
     function closeSidebar() {
       document.getElementById('sidebar').classList.remove('active');
       document.getElementById('overlay').classList.remove('active');
+    }
+    function loginWithGoogle() {
+      alert("Googleログイン処理は後ほど実装");
+    }
+    function logout() {
+      alert("ログアウト処理は後ほど実装");
     }
   </script>
 </body>
