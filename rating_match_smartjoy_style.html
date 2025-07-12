@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>レート対戦マッチング</title>
   <style>
     body {
@@ -11,46 +12,37 @@
       display: flex;
       justify-content: center;
       align-items: flex-start;
-      padding: 40px;
+      padding: 20px;
       flex-wrap: wrap;
+      margin: 0;
     }
+
     .container {
       display: flex;
-      width: 90%;
-      max-width: 1000px;
-      justify-content: space-between;
-      flex-wrap: wrap;
+      flex-direction: column;
+      width: 100%;
+      max-width: 600px;
+      margin: 0 auto;
     }
+
     .panel {
       background: #1e1e1e;
       padding: 20px;
       border-radius: 8px;
       width: 100%;
-      max-width: 480px;
-      margin: 10px auto;
+      margin-bottom: 16px;
+      box-sizing: border-box;
     }
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-      border: none;
-      border-radius: 4px;
-      background: #4CAF50;
-      color: white;
-      cursor: pointer;
-    }
-    .return-btn {
-      background: #2ecc71;
-      margin-top: 10px;
-      font-size: 14px;
-    }
+
     .room-card {
+      font-size: 14px;
+      text-align: center;
       border: 1px solid #333;
       border-radius: 6px;
       padding: 10px;
       margin-bottom: 10px;
-      font-size: 14px;
-      text-align: center;
     }
+
     .player-row {
       display: flex;
       align-items: center;
@@ -58,17 +50,21 @@
       gap: 8px;
       margin-top: 4px;
     }
+
     .player-icon {
       width: 32px;
       height: 32px;
       border-radius: 50%;
     }
-    #matchingStatus {
+
+    .return-btn {
+      background: #2ecc71;
       margin-top: 10px;
       font-size: 14px;
     }
   </style>
 </head>
+
 <body>
   <div class="container">
     <div class="panel">
