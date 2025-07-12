@@ -4,7 +4,6 @@
 <head>
   <meta charset="UTF-8" />
   <title>レート対戦マッチング</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
       background: #111;
@@ -13,14 +12,11 @@
       display: flex;
       justify-content: center;
       align-items: flex-start;
-      padding: 20px;
-      flex-wrap: wrap;
+      padding: 40px;
     }
     .container {
       display: flex;
-      flex-direction: row;
-      flex-wrap: wrap;
-      width: 100%;
+      width: 90%;
       max-width: 1000px;
       justify-content: space-between;
     }
@@ -29,8 +25,6 @@
       padding: 20px;
       border-radius: 8px;
       width: 48%;
-      min-width: 280px;
-      margin-bottom: 20px;
     }
     button {
       padding: 10px 20px;
@@ -43,19 +37,12 @@
     }
     table {
       width: 100%;
-      table-layout: fixed;
       margin-top: 10px;
     }
     th, td {
       padding: 6px 10px;
       text-align: left;
-      word-wrap: break-word;
     }
-    th:nth-child(1), td:nth-child(1) { width: 10%; }
-    th:nth-child(2), td:nth-child(2) { width: 25%; }
-    th:nth-child(3), td:nth-child(3) { width: 10%; text-align: center; }
-    th:nth-child(4), td:nth-child(4) { width: 25%; }
-    th:nth-child(5), td:nth-child(5) { width: 30%; text-align: right; }
     .return-btn {
       background: #2ecc71;
       margin-top: 6px;
@@ -136,7 +123,38 @@
         return;
       }
       document.getElementById("matchingStatus").innerText = "対戦相手を探しています...";
-      location.href = "rating_match_smartjoy_style.html";
+
+      const waitingRef = db.collection("waiting_users").doc("singleton");
+      const roomRef = db.collection("matching_rooms");
+      const doc = await waitingRef.get();
+
+      if (!doc.exists || doc.data().uid === uid) {
+        await waitingRef.set({ uid });
+
+        roomRef.where("player1", "==", uid).onSnapshot((snapshot) => {
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            if (data.player2) {
+              localStorage.setItem("roomId", doc.id);
+              waitingRef.delete();
+              location.href = "match_screen.html";
+            }
+          });
+        });
+      } else {
+        const opponentUid = doc.data().uid;
+        const roomId = `${opponentUid}_${uid}_${Date.now()}`;
+
+        await roomRef.doc(roomId).set({
+          player1: opponentUid,
+          player2: uid,
+          createdAt: Date.now()
+        });
+
+        await waitingRef.delete();
+        localStorage.setItem("roomId", roomId);
+        location.href = "match_screen.html";
+      }
     }
 
     auth.onAuthStateChanged(async (user) => {
