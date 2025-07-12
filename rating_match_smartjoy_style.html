@@ -147,12 +147,11 @@
                 <div class="player-info">
                   <img src="${userIconMap[p1]}" class="user-icon">
                   ${truncate(userNameMap[p1] || "名無し")} (${userRateMap[p1]})
-                </div>
-                <div>VS</div>
-                <div class="player-info">
+                
+                
                   <img src="${userIconMap[p2]}" class="user-icon">
                   ${truncate(userNameMap[p2] || "名無し")} (${userRateMap[p2]})
-                </div>
+                
                 ${(p1 === uid || p2 === uid) ? `<button class="return-btn" onclick="returnToRoom('${room.id}')">部屋に戻る</button>` : ""}
               </div>
             </div>
